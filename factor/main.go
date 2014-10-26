@@ -1,7 +1,7 @@
 package main
 
 import (
-	"factorlib"
+	"github.com/randall77/factorlib"
 	"flag"
 	"fmt"
 	"math/big"
