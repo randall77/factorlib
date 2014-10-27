@@ -14,11 +14,8 @@ func (b bitVec) setBit(i int) {
 	b[i>>6] |= uint64(1) << uint(i&63)
 }
 
-// inverts the setting of bit i.  Returns the old setting.
-func (b bitVec) toggleBit(i int) bool {
-	r := b[i>>6] >> uint(i&63) & 1 != 0
+func (b bitVec) toggleBit(i int) {
 	b[i>>6] ^= uint64(1) << uint(i&63)
-	return r
 }
 
 func (b bitVec) empty() bool {
@@ -44,21 +41,9 @@ func (b bitVec) firstBit() int {
 	panic("firstBit not defined on empty bitVec")
 }
 
-// b ^= c
+// b ^= c.  b and c must be constructed using the same length.
 func (b bitVec) xor(c bitVec) {
 	for i, x := range c {
 		b[i] ^= x
 	}
-}
-
-func (b bitVec) erase() {
-	for i := range b {
-		b[i] = 0
-	}
-}
-
-func (b bitVec) copy() bitVec {
-	a := make(bitVec, len(b))
-	copy(a, b)
-	return a
 }

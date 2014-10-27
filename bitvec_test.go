@@ -27,5 +27,8 @@ func TestBitVec(t *testing.T) {
 	if v.firstBit() != 700 {
 		t.Errorf("bad first bit")
 	}
-	// TODO: copy, erase
+	v.toggleBit(700)
+	if v.getBit(700) {
+		t.Errorf("bad toggle")
+	}
 }
