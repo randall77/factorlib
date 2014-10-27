@@ -10,15 +10,15 @@ func newBitVec(n uint) bitVec {
 }
 
 func (b bitVec) getBit(i uint) bool {
-	return b[i/wordsize]>>uint(i%wordsize) & 1 != 0
+	return b[i/wordsize]>>(i%wordsize) & 1 != 0
 }
 
 func (b bitVec) setBit(i uint) {
-	b[i/wordsize] |= uint(1) << uint(i%wordsize)
+	b[i/wordsize] |= uint(1) << (i%wordsize)
 }
 
 func (b bitVec) toggleBit(i uint) {
-	b[i/wordsize] ^= uint(1) << uint(i%wordsize)
+	b[i/wordsize] ^= uint(1) << (i%wordsize)
 }
 
 func (b bitVec) empty() bool {
