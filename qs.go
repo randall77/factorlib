@@ -64,10 +64,10 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 	r := new(big.Int)
 	bigp := new(big.Int)
 	t := new(big.Int)
-	var factors []int
+	var factors []uint
 
 	// matrix is used to do gaussian elimination on mod 2 exponents.
-	matrix := newBitMatrix(len(fb))
+	matrix := newBitMatrix(uint(len(fb)))
 
 	// largeprimes records instances of the equation
 	//   x^2 = prod(f) * p mod n
@@ -75,7 +75,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 	// p is a large prime.
 	type largerecord struct {
 		x *big.Int
-		f []int
+		f []uint
 	}
 	largeprimes := map[int64]largerecord{}
 
@@ -133,7 +133,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 				bigp.SetInt64(p)
 				for r.Mod(bigz, bigp).Sign() == 0 {
 					bigz.Div(bigz, bigp)
-					factors = append(factors, i)
+					factors = append(factors, uint(i))
 				}
 			}
 
@@ -233,7 +233,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 // f is a list of indexes into the factor base
 type eqn struct {
 	x *big.Int
-	f []int
+	f []uint
 }
 
 // pick some prime factors for our factor base.  If we happen
@@ -320,8 +320,8 @@ func makeSieveInfo(n *big.Int, start *big.Int, fb []int64, rnd *rand.Rand) []sie
 	return si
 }
 
-func dup(x []int) []int {
-	y := make([]int, len(x))
+func dup(x []uint) []uint {
+	y := make([]uint, len(x))
 	copy(y, x)
 	return y
 }

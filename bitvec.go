@@ -1,21 +1,24 @@
 package factorlib
 
-type bitVec []uint64
+type bitVec []uint
 
-func newBitVec(n int) bitVec {
-	return make([]uint64, (n+63)>>6)
+// wordsize == {32,64} when uint == uint{32,64}
+const wordsize = 32 << (^uint(0) >> 63)
+
+func newBitVec(n uint) bitVec {
+	return make([]uint, (n+wordsize-1)/wordsize)
 }
 
-func (b bitVec) getBit(i int) bool {
-	return b[i>>6]>>uint(i&63) & 1 != 0
+func (b bitVec) getBit(i uint) bool {
+	return b[i/wordsize]>>uint(i%wordsize) & 1 != 0
 }
 
-func (b bitVec) setBit(i int) {
-	b[i>>6] |= uint64(1) << uint(i&63)
+func (b bitVec) setBit(i uint) {
+	b[i/wordsize] |= uint(1) << uint(i%wordsize)
 }
 
-func (b bitVec) toggleBit(i int) {
-	b[i>>6] ^= uint64(1) << uint(i&63)
+func (b bitVec) toggleBit(i uint) {
+	b[i/wordsize] ^= uint(1) << uint(i%wordsize)
 }
 
 func (b bitVec) empty() bool {
@@ -27,12 +30,12 @@ func (b bitVec) empty() bool {
 	return true
 }
 
-func (b bitVec) firstBit() int {
+func (b bitVec) firstBit() uint {
 	for i, x := range b {
 		if x != 0 {
-			for j := 0; j < 64; j++ {
+			for j := uint(0); j < wordsize; j++ {
 				if x & 1 != 0 {
-					return i<<6 + j
+					return uint(i)*wordsize + j
 				}
 				x >>= 1
 			}
