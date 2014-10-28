@@ -1,18 +1,18 @@
 package linear
 
 import (
-	"testing"
 	"sort"
+	"testing"
 )
 
 func TestMatrix(t *testing.T) {
 	m := NewMatrix(20)
-	
-	idlist := m.AddRow([]uint{1,3,5}, "A")
+
+	idlist := m.AddRow([]uint{1, 3, 5}, "A")
 	if idlist != nil {
 		t.Fatalf("premature result %v", idlist)
 	}
-	idlist = m.AddRow([]uint{3,5,7}, "B")
+	idlist = m.AddRow([]uint{3, 5, 7}, "B")
 	if idlist != nil {
 		t.Fatalf("premature result %v", idlist)
 	}
@@ -41,7 +41,7 @@ func TestMatrix(t *testing.T) {
 	}
 
 	m = NewMatrix(1000)
-	idlist = m.AddRow([]uint{33,33,77,77}, "A")
+	idlist = m.AddRow([]uint{33, 33, 77, 77}, "A")
 	if idlist == nil {
 		t.Fatalf("trivial row not returned")
 	}

@@ -44,14 +44,14 @@ func TestEmptyFirstBit(t *testing.T) {
 }
 
 func TestXor(t *testing.T) {
-	for _, size := range []uint{0,1,10,63,64,65,999} {
+	for _, size := range []uint{0, 1, 10, 63, 64, 65, 999} {
 		x := newVector(size)
 		y := newVector(size)
-		
-		for i := uint(0); i < size; i+=3 {
+
+		for i := uint(0); i < size; i += 3 {
 			x.setBit(i)
 		}
-		for i := uint(0); i < size; i+=5 {
+		for i := uint(0); i < size; i += 5 {
 			y.setBit(i)
 		}
 		x.xor(y)

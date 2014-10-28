@@ -10,15 +10,15 @@ func newVector(n uint) vector {
 }
 
 func (b vector) getBit(i uint) bool {
-	return b[i/wordsize]>>(i%wordsize) & 1 != 0
+	return b[i/wordsize]>>(i%wordsize)&1 != 0
 }
 
 func (b vector) setBit(i uint) {
-	b[i/wordsize] |= uint(1) << (i%wordsize)
+	b[i/wordsize] |= uint(1) << (i % wordsize)
 }
 
 func (b vector) toggleBit(i uint) {
-	b[i/wordsize] ^= uint(1) << (i%wordsize)
+	b[i/wordsize] ^= uint(1) << (i % wordsize)
 }
 
 func (b vector) empty() bool {
@@ -34,7 +34,7 @@ func (b vector) firstBit() uint {
 	for i, x := range b {
 		if x != 0 {
 			for j := uint(0); j < wordsize; j++ {
-				if x & 1 != 0 {
+				if x&1 != 0 {
 					return uint(i)*wordsize + j
 				}
 				x >>= 1

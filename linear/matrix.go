@@ -37,7 +37,7 @@ func (m *Matrix) Rows() uint {
 // If there is a linear combination of the added rows that xor to the zero
 // vector, addRow returns the identities of those vectors.  Otherwise returns nil.
 func (m *Matrix) AddRow(idxs []uint, id interface{}) []interface{} {
-	bits := newVector(2*m.n)
+	bits := newVector(2 * m.n)
 	for _, i := range idxs {
 		bits.toggleBit(i)
 	}
@@ -52,7 +52,7 @@ func (m *Matrix) AddRow(idxs []uint, id interface{}) []interface{} {
 	}
 	p := bits.firstBit()
 	if p < m.n {
-		bits.setBit(m.n+uint(len(m.ids)))
+		bits.setBit(m.n + uint(len(m.ids)))
 		m.ids = append(m.ids, id)
 		m.rows = append(m.rows, row{bits, p})
 		return nil

@@ -2,9 +2,9 @@ package factorlib
 
 import (
 	"fmt"
+	"github.com/randall77/factorlib/linear"
 	"math/big"
 	"math/rand"
-	"github.com/randall77/factorlib/linear"
 )
 
 func init() {
@@ -43,7 +43,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 	}
 
 	maxp := fb[len(fb)-1]
-	bigmaxp2 := new(big.Int).SetInt64(maxp*maxp)
+	bigmaxp2 := new(big.Int).SetInt64(maxp * maxp)
 	fmt.Printf("maxp=%d maxp2=%d len(fb)=%d\n", maxp, bigmaxp2, len(fb))
 
 	// The x we start with
@@ -85,7 +85,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 		for i := 0; i < sievelen; i++ {
 			sieve[i] = 0
 		}
-		
+
 		// increment sieve entries for f(x) that are divisible
 		// by each factor base prime.
 		for i := range si {
@@ -97,7 +97,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 				sieve[j] += lg_p
 			}
 			f.off1 = int32(j - sievelen) // for next time
-			
+
 			// same for off2
 			j = int(f.off2)
 			if j < 0 {
@@ -108,7 +108,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 			}
 			f.off2 = int32(j - sievelen) // for next time
 		}
-		
+
 		// check sieve entries for big numbers, indicating smooth f(x).
 		t.Mul(start, start)
 		t.Sub(t, n)
@@ -219,12 +219,12 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 				fmt.Println("triv B")
 				continue
 			}
-	
+
 			t.GCD(nil, nil, t, n)
 			r.Div(n, t)
 			return []*big.Int{t, r}
 		}
-		
+
 		start.Add(start, x.SetInt64(int64(sievelen)))
 	}
 	return nil
@@ -266,9 +266,9 @@ func makeFactorBase(n *big.Int) ([]int64, *big.Int) {
 }
 
 type sieveinfo struct {
-	pk         int32  // p^k for this factor base entry
-	lg_p       uint8  // ~log_2(p)
-	off1, off2 int32  // starting offsets in sieve array
+	pk         int32 // p^k for this factor base entry
+	lg_p       uint8 // ~log_2(p)
+	off1, off2 int32 // starting offsets in sieve array
 }
 
 func makeSieveInfo(n *big.Int, start *big.Int, fb []int64, rnd *rand.Rand) []sieveinfo {
@@ -310,7 +310,7 @@ func makeSieveInfo(n *big.Int, start *big.Int, fb []int64, rnd *rand.Rand) []sie
 			}
 
 			si = append(si, sieveinfo{int32(pk), log2(p), int32(off1), int32(off2)})
-			if p==2 && k==1 {
+			if p == 2 && k == 1 {
 				// TODO: handle powers of 2 correctly.  Hansel's lemma
 				// doesn't work for them.
 				break

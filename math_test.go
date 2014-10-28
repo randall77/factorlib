@@ -202,7 +202,7 @@ func TestQuadraticModP(t *testing.T) {
 					}
 					cnt := 0
 					for x := int64(0); x < p; x++ {
-						if(a*x*x+b*x+c)%p == 0 {
+						if (a*x*x+b*x+c)%p == 0 {
 							cnt++
 						}
 					}

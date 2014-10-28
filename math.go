@@ -296,7 +296,7 @@ func sqrtFloor(x *big.Int) *big.Int {
 		return x
 	}
 	b := uint(x.BitLen())
-	
+
 	// invariant lo <= sqrt(x) < hi
 	lo := big.NewInt(1)
 	lo.Lsh(lo, (b-1)/2)
@@ -336,12 +336,12 @@ func quadraticModP(a, b, c, p int64, rnd *rand.Rand) []int64 {
 	if p == 2 {
 		// special case, easy to handle.
 		// (2 is not a unit mod 2, so 1/2a doesn't work when p==2)
-		if (a ^ b) & 1 == 0 {
-			if c & 1 == 0 {
+		if (a^b)&1 == 0 {
+			if c&1 == 0 {
 				r = append(r, 0, 1)
 			}
 		} else {
-			if c & 1 == 0 {
+			if c&1 == 0 {
 				r = append(r, 0)
 			} else {
 				r = append(r, 1)
@@ -355,12 +355,12 @@ func quadraticModP(a, b, c, p int64, rnd *rand.Rand) []int64 {
 	if d < 0 {
 		d += p
 	}
-	
+
 	if !quadraticResidue(d, p) {
 		return r
 	}
 	d = sqrtModP(d, p, rnd)
-	
+
 	i := modInv(2*a%p, p)
 
 	r = append(r, (p-b+d)*i%p)
