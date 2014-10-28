@@ -1,4 +1,4 @@
-package matrix
+package linear
 
 type bitVec []uint
 

@@ -1,4 +1,4 @@
-package matrix
+package linear
 
 // Implementation of a matrix over GF(2).  Used to find
 // linear combinations of rows which are zero.

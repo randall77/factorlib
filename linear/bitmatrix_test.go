@@ -1,4 +1,4 @@
-package matrix
+package linear
 
 import (
 	"testing"
