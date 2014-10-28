@@ -31,8 +31,6 @@ func TestVector(t *testing.T) {
 	if v.getBit(700) {
 		t.Errorf("bad toggle")
 	}
-	v.toggleBit(800)
-	v.toggleBit(900)
 }
 func TestEmptyFirstBit(t *testing.T) {
 	v := newVector(500)
