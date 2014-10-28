@@ -331,17 +331,16 @@ func sqrtCeil(x *big.Int) *big.Int {
 //   0 <= a,b,c < p
 //   a != 0
 func quadraticModP(a, b, c, p int64, rnd *rand.Rand) []int64 {
-
 	if p == 2 {
 		// special case, easy to handle.
 		// (2 is not a unit mod 2, so 1/2a doesn't work when p==2)
-		if (a^b)&1 == 0 {
-			if c&1 == 0 {
-				return []int64{0,1}
+		if a^b == 0 {
+			if c == 0 {
+				return []int64{0, 1}
 			}
 			return nil
 		}
-		if c&1 == 0 {
+		if c == 0 {
 			return []int64{0}
 		}
 		return []int64{1}
@@ -356,8 +355,8 @@ func quadraticModP(a, b, c, p int64, rnd *rand.Rand) []int64 {
 	}
 	d = sqrtModP(d, p, rnd)
 	i := modInv(2*a%p, p)
-	r := []int64{(p-b+d)*i%p}
-if d != 0 {
+	r := []int64{(p - b + d) * i % p}
+	if d != 0 {
 		r = append(r, (2*p-b-d)*i%p)
 	}
 	return r
