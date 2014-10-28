@@ -326,3 +326,48 @@ func sqrtCeil(x *big.Int) *big.Int {
 	}
 	return y
 }
+
+// solve ax^2+bx+c==0 mod p
+//   0 <= a,b,c < p
+//   a != 0
+func quadraticModP(a, b, c, p int64, rnd *rand.Rand) []int64 {
+	var r []int64
+
+	if p == 2 {
+		// special case, easy to handle.
+		// (2 is not a unit mod 2, so 1/2a doesn't work when p==2)
+		if (a ^ b) & 1 == 0 {
+			if c & 1 == 0 {
+				r = append(r, 0, 1)
+			}
+		} else {
+			if c & 1 == 0 {
+				r = append(r, 0)
+			} else {
+				r = append(r, 1)
+			}
+		}
+		return r
+	}
+
+	d := b*b - 4*a*c
+	d %= p
+	if d < 0 {
+		d += p
+	}
+	
+	if !quadraticResidue(d, p) {
+		return r
+	}
+	d = sqrtModP(d, p, rnd)
+	
+	i := modInv(2*a%p, p)
+
+	r = append(r, (p-b+d)*i%p)
+
+	if d != 0 {
+		r = append(r, (2*p-b-d)*i%p)
+	}
+
+	return r
+}

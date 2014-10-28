@@ -180,3 +180,37 @@ func TestSqrtCeil(t *testing.T) {
 		t.Errorf("sqrtCeil(0) != 0")
 	}
 }
+
+func TestQuadraticModP(t *testing.T) {
+	rnd := rand.New(rand.NewSource(123))
+	for i := 0; i < 25; i++ {
+		p := getPrime(i)
+		for a := int64(1); a < p; a++ {
+			for b := int64(0); b < p; b++ {
+				for c := int64(0); c < p; c++ {
+					s := quadraticModP(a, b, c, p, rnd)
+					if len(s) > 2 {
+						t.Errorf("too many quadratic solutions")
+					}
+					if len(s) == 2 && s[0] == s[1] {
+						t.Errorf("returned same root twice")
+					}
+					for _, x := range s {
+						if (a*x*x+b*x+c)%p != 0 {
+							t.Errorf("p=%d a=%d b=%d c=%d x=%d (ax^2+bx+c)%%p=%d", p, a, b, c, x, ((a*x*x+b*x+c)%p+p)%p)
+						}
+					}
+					cnt := 0
+					for x := int64(0); x < p; x++ {
+						if(a*x*x+b*x+c)%p == 0 {
+							cnt++
+						}
+					}
+					if cnt != len(s) {
+						t.Errorf("expected %d results, got %d\n", cnt, len(s))
+					}
+				}
+			}
+		}
+	}
+}
