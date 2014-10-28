@@ -42,3 +42,30 @@ func TestEmptyFirstBit(t *testing.T) {
 	}()
 	_ = v.firstBit()
 }
+
+func TestXor(t *testing.T) {
+	for _, size := range []uint{0,1,10,63,64,65,999} {
+		x := newVector(size)
+		y := newVector(size)
+		
+		for i := uint(0); i < size; i+=3 {
+			x.setBit(i)
+		}
+		for i := uint(0); i < size; i+=5 {
+			y.setBit(i)
+		}
+		x.xor(y)
+		for i := uint(0); i < size; i++ {
+			want := false
+			if i%3 == 0 || i%5 == 0 {
+				want = true
+			}
+			if i%15 == 0 {
+				want = false
+			}
+			if x.getBit(i) != want {
+				t.Errorf("bad xor size=%d bit=%d, want %t", size, i, want)
+			}
+		}
+	}
+}

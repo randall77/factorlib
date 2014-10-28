@@ -44,9 +44,10 @@ func (b vector) firstBit() uint {
 	panic("firstBit not defined on empty vector")
 }
 
-// b ^= c.  b and c must be constructed using the same length.
+// b ^= c.  b and c must be constructed using the same n.
 func (b vector) xor(c vector) {
-	for i, x := range c {
-		b[i] ^= x
+	if len(b) > 0 {
+		xor(&b[0], &c[0], len(b))
 	}
 }
+func xor(x, y *uint, size int) // in asm_*.s
