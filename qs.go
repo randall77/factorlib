@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
-	"github.com/randall77/factorlib/matrix"
+	"github.com/randall77/factorlib/linear"
 )
 
 func init() {
@@ -68,7 +68,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 	var factors []uint
 
 	// matrix is used to do gaussian elimination on mod 2 exponents.
-	m := matrix.NewBitMatrix(uint(len(fb)))
+	m := linear.NewMatrix(uint(len(fb)))
 
 	// largeprimes records instances of the equation
 	//   x^2 = prod(f) * p mod n
