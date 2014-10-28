@@ -112,10 +112,7 @@ func sqrtModP(n, p int64, rnd *rand.Rand) int64 {
 	var a, d int64
 	for {
 		a = 1 + rnd.Int63n(p-1)
-		d = (a*a - n) % p
-		if d < 0 {
-			d += p
-		}
+		d = (a*a + p - n) % p
 		if !quadraticResidue(d, p) {
 			break
 		}
@@ -346,10 +343,7 @@ func quadraticModP(a, b, c, p int64, rnd *rand.Rand) []int64 {
 		return []int64{1}
 	}
 
-	d := (b*b - 4*a*c) % p
-	if d < 0 {
-		d += p
-	}
+	d := (b*b + 4*(p-a)*c) % p
 	if !quadraticResidue(d, p) {
 		return nil
 	}
