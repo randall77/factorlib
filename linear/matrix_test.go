@@ -24,6 +24,9 @@ func TestMatrix(t *testing.T) {
 	if idlist != nil {
 		t.Fatalf("premature result %v", idlist)
 	}
+	if m.Rows() != 4 {
+		t.Fatalf("bad row count %v", idlist)
+	}
 	idlist = m.AddRow([]uint{5, 9, 1}, "E")
 	if idlist == nil {
 		t.Fatalf("bad nil result")
@@ -35,5 +38,17 @@ func TestMatrix(t *testing.T) {
 	sort.Strings(a)
 	if a[0] != "A" || a[1] != "B" || a[2] != "C" || a[3] != "E" {
 		t.Fatalf("bad ids %v", a)
+	}
+
+	m = NewMatrix(1000)
+	idlist = m.AddRow([]uint{33,33,77,77}, "A")
+	if idlist == nil {
+		t.Fatalf("trivial row not returned")
+	}
+	if len(idlist) != 1 {
+		t.Fatalf("trivial row length is not 1")
+	}
+	if idlist[0].(string) != "A" {
+		t.Fatalf("trivial row did not return its id")
 	}
 }
