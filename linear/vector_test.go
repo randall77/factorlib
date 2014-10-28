@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-func TestBitVec(t *testing.T) {
-	v := newBitVec(1000)
+func TestVector(t *testing.T) {
+	v := newVector(1000)
 	if !v.empty() {
 		t.Errorf("empty failed")
 	}

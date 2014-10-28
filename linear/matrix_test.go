@@ -5,8 +5,8 @@ import (
 	"sort"
 )
 
-func TestBitMatrix(t *testing.T) {
-	m := NewBitMatrix(20)
+func TestMatrix(t *testing.T) {
+	m := NewMatrix(20)
 	
 	idlist := m.AddRow([]uint{1,3,5}, "A")
 	if idlist != nil {

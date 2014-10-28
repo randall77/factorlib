@@ -2,7 +2,7 @@ package linear
 
 // Implementation of a matrix over GF(2).  Used to find
 // linear combinations of rows which are zero.
-type BitMatrix struct {
+type Matrix struct {
 	// size of matrix
 	n uint
 
@@ -17,18 +17,18 @@ type row struct {
 	// A bit vector of 2*n bits.  The first n bits are a combination
 	// of original rows.  The second n bits mark which original rows
 	// were combined to make this one.
-	bits bitVec
+	bits vector
 
 	// The column that we pivot with. == bits.firstBit()
 	pivot uint
 }
 
 // Return a new matrix which can handle indexes 0 <= i < n.
-func NewBitMatrix(n uint) *BitMatrix {
-	return &BitMatrix{n, make([]interface{}, 0, n), make([]row, 0, n)}
+func NewMatrix(n uint) *Matrix {
+	return &Matrix{n, make([]interface{}, 0, n), make([]row, 0, n)}
 }
 
-func (m *BitMatrix) Rows() uint {
+func (m *Matrix) Rows() uint {
 	return uint(len(m.rows))
 }
 
@@ -36,8 +36,8 @@ func (m *BitMatrix) Rows() uint {
 // times - an index is set if it appears an odd number of times).
 // If there is a linear combination of the added rows that xor to the zero
 // vector, addRow returns the identities of those vectors.  Otherwise returns nil.
-func (m *BitMatrix) AddRow(idxs []uint, id interface{}) []interface{} {
-	bits := newBitVec(2*m.n)
+func (m *Matrix) AddRow(idxs []uint, id interface{}) []interface{} {
+	bits := newVector(2*m.n)
 	for _, i := range idxs {
 		bits.toggleBit(i)
 	}

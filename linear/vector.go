@@ -1,27 +1,27 @@
 package linear
 
-type bitVec []uint
+type vector []uint
 
 // wordsize == {32,64} when uint == uint{32,64}
 const wordsize = 32 << (^uint(0) >> 63)
 
-func newBitVec(n uint) bitVec {
+func newVector(n uint) vector {
 	return make([]uint, (n+wordsize-1)/wordsize)
 }
 
-func (b bitVec) getBit(i uint) bool {
+func (b vector) getBit(i uint) bool {
 	return b[i/wordsize]>>(i%wordsize) & 1 != 0
 }
 
-func (b bitVec) setBit(i uint) {
+func (b vector) setBit(i uint) {
 	b[i/wordsize] |= uint(1) << (i%wordsize)
 }
 
-func (b bitVec) toggleBit(i uint) {
+func (b vector) toggleBit(i uint) {
 	b[i/wordsize] ^= uint(1) << (i%wordsize)
 }
 
-func (b bitVec) empty() bool {
+func (b vector) empty() bool {
 	for _, x := range b {
 		if x != 0 {
 			return false
@@ -30,7 +30,7 @@ func (b bitVec) empty() bool {
 	return true
 }
 
-func (b bitVec) firstBit() uint {
+func (b vector) firstBit() uint {
 	for i, x := range b {
 		if x != 0 {
 			for j := uint(0); j < wordsize; j++ {
@@ -41,11 +41,11 @@ func (b bitVec) firstBit() uint {
 			}
 		}
 	}
-	panic("firstBit not defined on empty bitVec")
+	panic("firstBit not defined on empty vector")
 }
 
 // b ^= c.  b and c must be constructed using the same length.
-func (b bitVec) xor(c bitVec) {
+func (b vector) xor(c vector) {
 	for i, x := range c {
 		b[i] ^= x
 	}
