@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"github.com/randall77/factorlib/matrix"
 )
 
 func init() {
@@ -67,7 +68,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 	var factors []uint
 
 	// matrix is used to do gaussian elimination on mod 2 exponents.
-	matrix := newBitMatrix(uint(len(fb)))
+	m := matrix.NewBitMatrix(uint(len(fb)))
 
 	// largeprimes records instances of the equation
 	//   x^2 = prod(f) * p mod n
@@ -164,7 +165,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 				x.Mod(x, n)
 				factors = append(factors, lr.f...)
 			}
-			fmt.Printf("eqn%d/%d %d^2 === ", len(matrix.rows), len(fb), x)
+			fmt.Printf("eqn%d/%d %d^2 === ", m.Rows(), len(fb), x)
 			for j, i := range factors {
 				if j > 0 {
 					fmt.Printf("·")
@@ -172,7 +173,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 				fmt.Printf("%d", fb[i])
 			}
 			fmt.Printf("\n")
-			idlist := matrix.addRow(factors, eqn{new(big.Int).Set(x), dup(factors)})
+			idlist := m.AddRow(factors, eqn{new(big.Int).Set(x), dup(factors)})
 			if idlist == nil {
 				continue
 			}

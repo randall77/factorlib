@@ -1,4 +1,4 @@
-package factorlib
+package matrix
 
 import (
 	"testing"
@@ -6,25 +6,25 @@ import (
 )
 
 func TestBitMatrix(t *testing.T) {
-	m := newBitMatrix(20)
+	m := NewBitMatrix(20)
 	
-	idlist := m.addRow([]uint{1,3,5}, "A")
+	idlist := m.AddRow([]uint{1,3,5}, "A")
 	if idlist != nil {
 		t.Fatalf("premature result %v", idlist)
 	}
-	idlist = m.addRow([]uint{3,5,7}, "B")
+	idlist = m.AddRow([]uint{3,5,7}, "B")
 	if idlist != nil {
 		t.Fatalf("premature result %v", idlist)
 	}
-	idlist = m.addRow([]uint{5, 7, 9}, "C")
+	idlist = m.AddRow([]uint{5, 7, 9}, "C")
 	if idlist != nil {
 		t.Fatalf("premature result %v", idlist)
 	}
-	idlist = m.addRow([]uint{5, 9, 1, 11}, "D")
+	idlist = m.AddRow([]uint{5, 9, 1, 11}, "D")
 	if idlist != nil {
 		t.Fatalf("premature result %v", idlist)
 	}
-	idlist = m.addRow([]uint{5, 9, 1}, "E")
+	idlist = m.AddRow([]uint{5, 9, 1}, "E")
 	if idlist == nil {
 		t.Fatalf("bad nil result")
 	}

@@ -1,4 +1,4 @@
-package factorlib
+package matrix
 
 import (
 	"testing"
