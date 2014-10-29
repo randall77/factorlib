@@ -39,12 +39,15 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 	// first, pick a factor base
 	fb, a := makeFactorBase(n)
 	if a.Sign() != 0 {
-		return []big.Int{a, *new(big.Int).Div(&n, &a)}
+		var b big.Int
+		b.Div(&n, &a)
+		return []big.Int{a, b}
 	}
 
 	maxp := fb[len(fb)-1]
-	bigmaxp2 := new(big.Int).SetInt64(maxp * maxp)
-	fmt.Printf("maxp=%d maxp2=%d len(fb)=%d\n", maxp, bigmaxp2, len(fb))
+	var bigmaxp2 big.Int
+	bigmaxp2.SetInt64(maxp * maxp)
+	fmt.Printf("maxp=%d maxp2=%d len(fb)=%d\n", maxp, &bigmaxp2, len(fb))
 
 	// The x we start with
 	start := sqrtCeil(&n)
@@ -59,12 +62,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 	sieve := make([]byte, sievelen)
 
 	// temporary storage
-	x := new(big.Int)
-	y := new(big.Int)
-	bigz := new(big.Int)
-	r := new(big.Int)
-	bigp := new(big.Int)
-	t := new(big.Int)
+	var x, y, bigz, r, bigp, t big.Int
 	var factors []uint
 
 	// matrix is used to do gaussian elimination on mod 2 exponents.
@@ -111,7 +109,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 
 		// check sieve entries for big numbers, indicating smooth f(x).
 		t.Mul(start, start)
-		t.Sub(t, &n)
+		t.Sub(&t, &n)
 		threshold := byte(t.BitLen()) - 2*log2(maxp)
 		for i := 0; i < sievelen; i++ {
 			if sieve[i] < threshold {
@@ -122,24 +120,24 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 
 			// compute x, y=f(x)
 			x.SetInt64(int64(i))
-			x.Add(start, x)
-			y.Mul(x, x)
-			y.Sub(y, &n)
+			x.Add(start, &x)
+			y.Mul(&x, &x)
+			y.Sub(&y, &n)
 
 			// trial divide y by the factor base
 			// accumulate factor base indexes of factors
-			bigz.Set(y)
+			bigz.Set(&y)
 			factors = factors[:0]
 			for i, p := range fb {
 				bigp.SetInt64(p)
-				for r.Mod(bigz, bigp).Sign() == 0 {
-					bigz.Div(bigz, bigp)
+				for r.Mod(&bigz, &bigp).Sign() == 0 {
+					bigz.Div(&bigz, &bigp)
 					factors = append(factors, uint(i))
 				}
 			}
 
 			// if remainder > B^2, it's too big
-			if bigz.Cmp(bigmaxp2) > 0 {
+			if bigz.Cmp(&bigmaxp2) > 0 {
 				//fmt.Printf("  false positive y=%d z=%d threshold=%d sieve[i]=%d log2(y)=%d log2(y/z)=%d\n", y, bigz, threshold, sieve[i], y.BitLen(), x.Div(y, bigz).BitLen())
 				continue
 			}
@@ -150,7 +148,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				lr, ok := largeprimes[z]
 				if !ok {
 					// haven't seen this large prime yet.  Save record for later
-					largeprimes[z] = largerecord{new(big.Int).Set(x), dup(factors)}
+					largeprimes[z] = largerecord{new(big.Int).Set(&x), dup(factors)}
 					//fmt.Printf("  savelarge %d %v\n", z, factors)
 					continue
 				}
@@ -158,14 +156,14 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				// x1^2 === prod(f1) * largeprime
 				// x2^2 === prod(f2) * largeprime
 				//fmt.Printf("  largeprime %d match\n", bigz)
-				x.Mul(x, lr.x)
-				x.Mod(x, &n)
-				y.ModInverse(bigz, &n) // TODO: could bigz divide n?
-				x.Mul(x, y)
-				x.Mod(x, &n)
+				x.Mul(&x, lr.x)
+				x.Mod(&x, &n)
+				y.ModInverse(&bigz, &n) // TODO: could bigz divide n?
+				x.Mul(&x, &y)
+				x.Mod(&x, &n)
 				factors = append(factors, lr.f...)
 			}
-			fmt.Printf("eqn%d/%d %d^2 === ", m.Rows(), len(fb), x)
+			fmt.Printf("eqn%d/%d %d^2 === ", m.Rows(), len(fb), &x)
 			for j, i := range factors {
 				if j > 0 {
 					fmt.Printf("·")
@@ -173,7 +171,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				fmt.Printf("%d", fb[i])
 			}
 			fmt.Printf("\n")
-			idlist := m.AddRow(factors, eqn{new(big.Int).Set(x), dup(factors)})
+			idlist := m.AddRow(factors, eqn{new(big.Int).Set(&x), dup(factors)})
 			if idlist == nil {
 				continue
 			}
@@ -195,7 +193,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 					}
 					// second occurrence of this factor
 					t.SetInt64(fb[i])
-					b.Mul(b, t)
+					b.Mul(b, &t)
 					b.Mod(b, &n)
 					odd[i] = false
 				}
@@ -220,9 +218,9 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				continue
 			}
 
-			t.GCD(nil, nil, t, &n)
-			r.Div(&n, t)
-			return []big.Int{*t, *r}
+			t.GCD(nil, nil, &t, &n)
+			r.Div(&n, &t)
+			return []big.Int{t, r}
 		}
 
 		start.Add(start, x.SetInt64(int64(sievelen)))

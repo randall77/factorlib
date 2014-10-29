@@ -82,16 +82,16 @@ func main() {
 	}
 
 	// Call into main library to do factoring
-	fmt.Printf("factoring %d using algorithm %s\n", n, *alg)
+	fmt.Printf("factoring %d using algorithm %s\n", &n, *alg)
 	factors := factorlib.Factor(n, *alg, rnd)
 
 	// Print result
-	fmt.Printf("%d = ", n)
+	fmt.Printf("%d = ", &n)
 	for i, f := range factors {
 		if i > 0 {
 			fmt.Print("·")
 		}
-		fmt.Printf("%d", f)
+		fmt.Printf("%d", &f)
 	}
 	fmt.Println()
 }
