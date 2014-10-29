@@ -2,7 +2,6 @@ package factorlib
 
 import (
 	"fmt"
-	"math/big"
 )
 
 // storage for all the primes we've found so far.
@@ -90,20 +89,20 @@ again:
 	start := sieved
 	end := start + sievewidth
 
-	// We start sieving with a prime p at p^2, so the biggest prime we need to use is sqrt(end)
-	var x big.Int
-	x.SetInt64(end)
-	x = root(x, two)
-	maxp := x.Int64()
-
 	// initialize sieve
 	for i := 0; i < sievewidth/30; i++ {
 		sieve[i] = 0
 	}
 
 	// mark all composite numbers in the sieve
-	for i := 3; primes[i] <= maxp; i++ { // "3" means start at p=7
+	for i := 3; ; i++ { // "3" means start at p=7
 		p := primes[i]
+		if p*p >= end {
+			// We don't need to sieve with primes >= sqrt(end).
+			// If they have such a factor, they will also have a
+			// factor < sqrt(end).
+			break
+		}
 
 		// compute starting offset.  It is the offset from sieve start
 		// of the first multiple of p which is >= p^2.
@@ -122,7 +121,7 @@ again:
 			block := y / 30
 			mask := byte(1) << b
 			// This is the inner loop.  We sweep through the sieve
-			// 8 times for each prime <= sqrt(end).
+			// 8 times for each prime < sqrt(end).
 			for block < sievewidth/30 {
 				sieve[block] |= mask
 				block += p
