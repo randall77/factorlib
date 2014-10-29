@@ -47,14 +47,14 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 	maxp := fb[len(fb)-1]
 	var bigmaxp2 big.Int
 	bigmaxp2.SetInt64(maxp * maxp)
-	fmt.Printf("maxp=%d maxp2=%d len(fb)=%d\n", maxp, &bigmaxp2, len(fb))
+	fmt.Printf("maxp=%d maxp2=%d len(fb)=%d\n", maxp, maxp*maxp, len(fb))
 
 	// The x we start with
 	start := *sqrtCeil(&n)
 
 	si := makeSieveInfo(n, start, fb, rnd)
 
-	sievelen := int(fb[len(fb)-1])
+	sievelen := int(maxp)
 	if sievelen < 10000 {
 		sievelen = 10000
 	}
@@ -232,7 +232,6 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 
 		start.Add(&start, x.SetInt64(int64(sievelen)))
 	}
-	return nil
 }
 
 // x^2 === prod(f) mod n

@@ -21,5 +21,4 @@ func trial(n big.Int, rnd *rand.Rand) []big.Int {
 			return v[:]
 		}
 	}
-	return nil
 }
