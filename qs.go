@@ -147,8 +147,11 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				// try to find another record with the same largeprime
 				lr, ok := largeprimes[z]
 				if !ok {
+					var lr largerecord
+					lr.x.Set(&x)
+					lr.f = dup(factors)
 					// haven't seen this large prime yet.  Save record for later
-					largeprimes[z] = largerecord{*new(big.Int).Set(&x), dup(factors)}
+					largeprimes[z] = lr
 					//fmt.Printf("  savelarge %d %v\n", z, factors)
 					continue
 				}
@@ -171,7 +174,10 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				fmt.Printf("%d", fb[i])
 			}
 			fmt.Printf("\n")
-			idlist := m.AddRow(factors, eqn{*new(big.Int).Set(&x), dup(factors)})
+			var e eqn
+			e.x.Set(&x)
+			e.f = dup(factors)
+			idlist := m.AddRow(factors, e)
 			if idlist == nil {
 				continue
 			}
