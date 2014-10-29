@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/randall77/factorlib"
 	"flag"
 	"fmt"
+	"github.com/randall77/factorlib"
 	"math/big"
 	"math/rand"
 	"os"
@@ -62,8 +62,8 @@ func main() {
 		min.Exp(&ten, big.NewInt(int64(d-1)), nil)
 		max.Exp(&ten, big.NewInt(int64(d)), nil)
 		for {
-			x := randomPrime(d / 2, rnd)
-			y := randomPrime(d / 2, rnd)
+			x := randomPrime(d/2, rnd)
+			y := randomPrime(d/2, rnd)
 			n.Mul(&x, &y)
 			if n.Cmp(&min) >= 0 && n.Cmp(&max) < 0 {
 				break
