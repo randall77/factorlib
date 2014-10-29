@@ -191,6 +191,52 @@ func sqrtModPK(n, p int64, k uint, rnd *rand.Rand) int64 {
 	return r
 }
 
+type primePower struct {
+	p int64
+	k uint
+}
+
+// returns a solution to x^2 == a mod n, where n is a product of the listed prime powers.
+//   gcd(a,n) == 1
+//   n[i].k >= 1
+//   a must be a quadratic residue mod each prime
+func sqrtModN(a int64, n []primePower, rnd *rand.Rand) int64 {
+	if a <= 1 {
+		return a
+	}
+
+	// compute N = product of all primes
+	N := int64(1)
+	for _, pp := range n {
+		for i := uint(0); i < pp.k; i++ {
+			N *= pp.p
+		}
+	}
+
+	// use Chinese Remainder Theorem to compute result one p^k at a time.
+	r := int64(0)
+	for _, pp := range n {
+		// compute p^k
+		pk := int64(1)
+		for i := uint(0); i < pp.k; i++ {
+			pk *= pp.p
+		}
+
+		// find a solution to x^2 == a mod p^k
+		x := sqrtModPK(a%pk, pp.p, pp.k, rnd)
+
+		// add it in to total result
+		M := N / pk
+		r += M * x * modInv(M%pk, pk)
+		r %= N
+	}
+	// check result
+	if r*r%N != a {
+		panic("bad sqrt")
+	}
+	return r
+}
+
 // returns true iff x^2 == a mod p has a solution for x.
 // requires: 0 <= a < p, p prime
 func quadraticResidueBig(a, p *big.Int) bool {

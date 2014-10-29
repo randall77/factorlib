@@ -139,6 +139,46 @@ func TestSqrtModPK(t *testing.T) {
 	}
 }
 
+func TestSqrtModN(t *testing.T) {
+	rnd := rand.New(rand.NewSource(123))
+	// test square roots mod 5^i 7^j 11^k for all quadratic residues mod those numbers.
+	var primepowers = [3]primePower{{5, 0}, {7, 0}, {11, 0}}
+	for i := uint(0); i < 4; i++ {
+		primepowers[0].k = i
+		for j := uint(0); j < 4; j++ {
+			primepowers[1].k = j
+			for k := uint(0); k < 3; k++ {
+				primepowers[2].k = k
+
+				n := int64(1)
+				for _, pp := range primepowers {
+					for z := uint(0); z < pp.k; z++ {
+						n *= pp.p
+					}
+				}
+				for a := int64(0); a < n; a++ {
+					if gcd(a, n) != 1 {
+						continue
+					}
+					if !quadraticResidue(a%5, 5) {
+						continue
+					}
+					if !quadraticResidue(a%7, 7) {
+						continue
+					}
+					if !quadraticResidue(a%11, 11) {
+						continue
+					}
+					x := sqrtModN(a, primepowers[:], rnd)
+					if x*x%n != a {
+						t.Errorf("bad sqrtModN a=%d n=%d x=%d\n", a, n, x)
+					}
+				}
+			}
+		}
+	}
+}
+
 func TestSqrtFloor(t *testing.T) {
 	b := big.NewInt(0)
 	m := big.NewInt(0)
