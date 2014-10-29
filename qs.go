@@ -50,9 +50,9 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 	fmt.Printf("maxp=%d maxp2=%d len(fb)=%d\n", maxp, &bigmaxp2, len(fb))
 
 	// The x we start with
-	start := sqrtCeil(&n)
+	start := *sqrtCeil(&n)
 
-	si := makeSieveInfo(&n, start, fb, rnd)
+	si := makeSieveInfo(n, start, fb, rnd)
 
 	sievelen := int(fb[len(fb)-1])
 	if sievelen < 10000 {
@@ -73,7 +73,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 	// where f are small primes (indexes into factor base) and
 	// p is a large prime.
 	type largerecord struct {
-		x *big.Int
+		x big.Int
 		f []uint
 	}
 	largeprimes := map[int64]largerecord{}
@@ -108,7 +108,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 		}
 
 		// check sieve entries for big numbers, indicating smooth f(x).
-		t.Mul(start, start)
+		t.Mul(&start, &start)
 		t.Sub(&t, &n)
 		threshold := byte(t.BitLen()) - 2*log2(maxp)
 		for i := 0; i < sievelen; i++ {
@@ -120,7 +120,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 
 			// compute x, y=f(x)
 			x.SetInt64(int64(i))
-			x.Add(start, &x)
+			x.Add(&start, &x)
 			y.Mul(&x, &x)
 			y.Sub(&y, &n)
 
@@ -148,7 +148,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				lr, ok := largeprimes[z]
 				if !ok {
 					// haven't seen this large prime yet.  Save record for later
-					largeprimes[z] = largerecord{new(big.Int).Set(&x), dup(factors)}
+					largeprimes[z] = largerecord{*new(big.Int).Set(&x), dup(factors)}
 					//fmt.Printf("  savelarge %d %v\n", z, factors)
 					continue
 				}
@@ -156,7 +156,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				// x1^2 === prod(f1) * largeprime
 				// x2^2 === prod(f2) * largeprime
 				//fmt.Printf("  largeprime %d match\n", bigz)
-				x.Mul(&x, lr.x)
+				x.Mul(&x, &lr.x)
 				x.Mod(&x, &n)
 				y.ModInverse(&bigz, &n) // TODO: could bigz divide n?
 				x.Mul(&x, &y)
@@ -171,20 +171,21 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				fmt.Printf("%d", fb[i])
 			}
 			fmt.Printf("\n")
-			idlist := m.AddRow(factors, eqn{new(big.Int).Set(&x), dup(factors)})
+			idlist := m.AddRow(factors, eqn{*new(big.Int).Set(&x), dup(factors)})
 			if idlist == nil {
 				continue
 			}
 
 			// we found a set of equations with all even powers
 			// compute a and b where a^2 === b^2 mod n
-			a := big.NewInt(1)
-			b := big.NewInt(1)
+			var a, b big.Int
+			a.SetInt64(1)
+			b.SetInt64(1)
 			odd := make([]bool, len(fb))
 			for _, id := range idlist {
 				e := id.(eqn)
-				a.Mul(a, e.x)
-				a.Mod(a, &n)
+				a.Mul(&a, &e.x)
+				a.Mod(&a, &n)
 				for _, i := range e.f {
 					if !odd[i] {
 						// first occurrence of this factor
@@ -193,8 +194,8 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 					}
 					// second occurrence of this factor
 					t.SetInt64(fb[i])
-					b.Mul(b, &t)
-					b.Mod(b, &n)
+					b.Mul(&b, &t)
+					b.Mod(&b, &n)
 					odd[i] = false
 				}
 			}
@@ -206,12 +207,12 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				}
 			}
 
-			if a.Cmp(b) == 0 {
+			if a.Cmp(&b) == 0 {
 				// trivial equation, ignore it
 				fmt.Println("triv A")
 				continue
 			}
-			t.Add(a, b)
+			t.Add(&a, &b)
 			if t.Cmp(&n) == 0 {
 				// trivial equation, ignore it
 				fmt.Println("triv B")
@@ -223,7 +224,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 			return []big.Int{t, r}
 		}
 
-		start.Add(start, x.SetInt64(int64(sievelen)))
+		start.Add(&start, x.SetInt64(int64(sievelen)))
 	}
 	return nil
 }
@@ -231,7 +232,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 // x^2 === prod(f) mod n
 // f is a list of indexes into the factor base
 type eqn struct {
-	x *big.Int
+	x big.Int
 	f []uint
 }
 
@@ -268,11 +269,9 @@ type sieveinfo struct {
 	off1, off2 int32 // starting offsets in sieve array
 }
 
-func makeSieveInfo(n *big.Int, start *big.Int, fb []int64, rnd *rand.Rand) []sieveinfo {
+func makeSieveInfo(n big.Int, start big.Int, fb []int64, rnd *rand.Rand) []sieveinfo {
 	var si []sieveinfo
-	bigpk := new(big.Int)
-	biga := new(big.Int)
-	m := new(big.Int)
+	var bigpk, biga, m big.Int
 
 	for _, p := range fb {
 		pk := p
@@ -281,7 +280,7 @@ func makeSieveInfo(n *big.Int, start *big.Int, fb []int64, rnd *rand.Rand) []sie
 				break
 			}
 			bigpk.SetInt64(pk)
-			biga.Mod(n, bigpk)
+			biga.Mod(&n, &bigpk)
 			z1 := sqrtModPK(biga.Int64(), p, k, rnd) // find solution to x^2 == a mod p^k
 			if z1 == 0 {
 				panic("factor base divides n")
@@ -289,7 +288,7 @@ func makeSieveInfo(n *big.Int, start *big.Int, fb []int64, rnd *rand.Rand) []sie
 			z2 := pk - z1
 
 			// adjust to start
-			s := m.Mod(start, bigpk).Int64()
+			s := m.Mod(&start, &bigpk).Int64()
 			off1 := z1 - s
 			if off1 < 0 {
 				off1 += pk
