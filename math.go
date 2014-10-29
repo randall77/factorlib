@@ -109,6 +109,7 @@ func sqrtModP(n, p int64, rnd *rand.Rand) int64 {
 	if p%4 == 3 {
 		return expMod(n, (p+1)>>2, p)
 	}
+	// Cipolla's algorithm (http://en.wikipedia.org/wiki/Cipolla's_algorithm)
 	var a, d int64
 	for {
 		a = 1 + rnd.Int63n(p-1)
@@ -193,24 +194,24 @@ func sqrtModPK(n, p int64, k uint, rnd *rand.Rand) int64 {
 // returns true iff x^2 == a mod p has a solution for x.
 // requires: 0 <= a < p, p prime
 func quadraticResidueBig(a, p *big.Int) bool {
-	if a.Cmp(two) < 0 {
+	if a.Cmp(&two) < 0 {
 		return true
 	}
 	// a is a quadratic residue (x^2 == a has a solution) iff
 	// a^((p-1)/2) == 1 mod p.
 	e := big.NewInt(0).Rsh(p, 1)
-	return e.Exp(a, e, p).Cmp(one) == 0
+	return e.Exp(a, e, p).Cmp(&one) == 0
 }
 
 // solves x^2 == a mod p
 // returns nil if there is no solution.
 func sqrtModPBig(n, p *big.Int, rnd *rand.Rand) *big.Int {
-	if n.Cmp(two) < 0 {
+	if n.Cmp(&two) < 0 {
 		return n
 	}
 	if p.Bit(1) == 1 { // p == 3 mod 4
 		// result = n^((p+1)/4) mod p
-		x := big.NewInt(0).Add(p, one)
+		x := big.NewInt(0).Add(p, &one)
 		x.Rsh(x, 2)
 		x.Exp(n, x, p)
 		return x
@@ -228,7 +229,7 @@ func sqrtModPBig(n, p *big.Int, rnd *rand.Rand) *big.Int {
 	}
 
 	// compute a^2-n
-	d := big.NewInt(0).Exp(a, two, p)
+	d := big.NewInt(0).Exp(a, &two, p)
 	d.Sub(d, n)
 	if d.Sign() < 0 {
 		d.Add(d, p)
@@ -247,7 +248,7 @@ func sqrtModPBig(n, p *big.Int, rnd *rand.Rand) *big.Int {
 	m4 := big.NewInt(0)
 
 	// repeated sqaring of x, multiplying into r
-	q := big.NewInt(0).Add(p, one)
+	q := big.NewInt(0).Add(p, &one)
 	q.Rsh(q, 1)
 	for q.Sign() != 0 {
 		if q.Bit(0) != 0 {
@@ -319,7 +320,7 @@ func sqrtCeil(x *big.Int) *big.Int {
 	y2 := big.NewInt(0)
 	y2.Mul(y, y)
 	if y2.Cmp(x) != 0 {
-		y = y2.Add(y, one)
+		y = y2.Add(y, &one)
 	}
 	return y
 }

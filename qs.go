@@ -11,7 +11,7 @@ func init() {
 	factorizers["qs"] = qs
 }
 
-func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
+func qs(n big.Int, rnd *rand.Rand) []big.Int {
 	// Quadratic sieve:
 	// Define f(x) = x^2 - n.  We wish to find x such that f(x) is smooth.
 	// We will take x starting at ceil(sqrt(n)).
@@ -38,8 +38,8 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 
 	// first, pick a factor base
 	fb, a := makeFactorBase(n)
-	if a != nil {
-		return []*big.Int{a, new(big.Int).Div(n, a)}
+	if a.Sign() != 0 {
+		return []big.Int{a, *new(big.Int).Div(&n, &a)}
 	}
 
 	maxp := fb[len(fb)-1]
@@ -47,9 +47,9 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 	fmt.Printf("maxp=%d maxp2=%d len(fb)=%d\n", maxp, bigmaxp2, len(fb))
 
 	// The x we start with
-	start := sqrtCeil(n)
+	start := sqrtCeil(&n)
 
-	si := makeSieveInfo(n, start, fb, rnd)
+	si := makeSieveInfo(&n, start, fb, rnd)
 
 	sievelen := int(fb[len(fb)-1])
 	if sievelen < 10000 {
@@ -111,7 +111,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 
 		// check sieve entries for big numbers, indicating smooth f(x).
 		t.Mul(start, start)
-		t.Sub(t, n)
+		t.Sub(t, &n)
 		threshold := byte(t.BitLen()) - 2*log2(maxp)
 		for i := 0; i < sievelen; i++ {
 			if sieve[i] < threshold {
@@ -124,7 +124,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 			x.SetInt64(int64(i))
 			x.Add(start, x)
 			y.Mul(x, x)
-			y.Sub(y, n)
+			y.Sub(y, &n)
 
 			// trial divide y by the factor base
 			// accumulate factor base indexes of factors
@@ -159,10 +159,10 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 				// x2^2 === prod(f2) * largeprime
 				//fmt.Printf("  largeprime %d match\n", bigz)
 				x.Mul(x, lr.x)
-				x.Mod(x, n)
-				y.ModInverse(bigz, n) // TODO: could bigz divide n?
+				x.Mod(x, &n)
+				y.ModInverse(bigz, &n) // TODO: could bigz divide n?
 				x.Mul(x, y)
-				x.Mod(x, n)
+				x.Mod(x, &n)
 				factors = append(factors, lr.f...)
 			}
 			fmt.Printf("eqn%d/%d %d^2 === ", m.Rows(), len(fb), x)
@@ -186,7 +186,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 			for _, id := range idlist {
 				e := id.(eqn)
 				a.Mul(a, e.x)
-				a.Mod(a, n)
+				a.Mod(a, &n)
 				for _, i := range e.f {
 					if !odd[i] {
 						// first occurrence of this factor
@@ -196,7 +196,7 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 					// second occurrence of this factor
 					t.SetInt64(fb[i])
 					b.Mul(b, t)
-					b.Mod(b, n)
+					b.Mod(b, &n)
 					odd[i] = false
 				}
 			}
@@ -214,15 +214,15 @@ func qs(n *big.Int, rnd *rand.Rand) []*big.Int {
 				continue
 			}
 			t.Add(a, b)
-			if t.Cmp(n) == 0 {
+			if t.Cmp(&n) == 0 {
 				// trivial equation, ignore it
 				fmt.Println("triv B")
 				continue
 			}
 
-			t.GCD(nil, nil, t, n)
-			r.Div(n, t)
-			return []*big.Int{t, r}
+			t.GCD(nil, nil, t, &n)
+			r.Div(&n, t)
+			return []big.Int{*t, *r}
 		}
 
 		start.Add(start, x.SetInt64(int64(sievelen)))
@@ -239,8 +239,7 @@ type eqn struct {
 
 // pick some prime factors for our factor base.  If we happen
 // upon a factor of n, return it instead.
-// TODO: use -1
-func makeFactorBase(n *big.Int) ([]int64, *big.Int) {
+func makeFactorBase(n big.Int) ([]int64, big.Int) {
 	// upper limit on prime factors (TODO: dependent on n) that we sieve with
 	const B = 50000
 	var fb []int64
@@ -248,13 +247,13 @@ func makeFactorBase(n *big.Int) ([]int64, *big.Int) {
 	for i := 0; ; i++ {
 		p := getPrime(i)
 		if p > B {
-			return fb, nil
+			return fb, zero
 		}
 		bigp.SetInt64(p)
-		biga.Mod(n, &bigp)
+		biga.Mod(&n, &bigp)
 		a := biga.Int64()
 		if a == 0 {
-			return nil, &bigp
+			return nil, bigp
 		}
 		if quadraticResidue(a, p) {
 			// if x^2 == n mod p has no solutions, then

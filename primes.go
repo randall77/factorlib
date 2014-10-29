@@ -90,8 +90,11 @@ again:
 	start := sieved
 	end := start + sievewidth
 
-	// We start sieving at p^2, so the biggest prime we need to use is sqrt(end)
-	maxp := root(big.NewInt(end), two).Int64()
+	// We start sieving with a prime p at p^2, so the biggest prime we need to use is sqrt(end)
+	var x big.Int
+	x.SetInt64(end)
+	x = root(x, two)
+	maxp := x.Int64()
 
 	// initialize sieve
 	for i := 0; i < sievewidth/30; i++ {

@@ -151,7 +151,7 @@ func TestSqrtFloor(t *testing.T) {
 			t.Errorf("sqrtFloor(%d) = %d, too large", b, c)
 		}
 		m.Set(c)
-		m.Add(c, one)
+		m.Add(c, &one)
 		m.Mul(m, m)
 		if m.Cmp(b) <= 0 {
 			t.Errorf("sqrtFloor(%d) = %d, too small", b, c)
@@ -170,13 +170,13 @@ func TestSqrtCeil(t *testing.T) {
 			t.Errorf("sqrtCeil(%d) = %d, too small", b, c)
 		}
 		m.Set(c)
-		m.Sub(c, one)
+		m.Sub(c, &one)
 		m.Mul(m, m)
 		if m.Cmp(b) >= 0 {
 			t.Errorf("sqrtCeil(%d) = %d, too large", b, c)
 		}
 	}
-	if sqrtCeil(zero).Sign() != 0 {
+	if sqrtCeil(&zero).Sign() != 0 {
 		t.Errorf("sqrtCeil(0) != 0")
 	}
 }
