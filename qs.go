@@ -12,6 +12,11 @@ func init() {
 }
 
 func qs(n big.Int, rnd *rand.Rand) []big.Int {
+	// qs does not work for powers of a single prime.  Check that first.
+	if f := primepower(n, rnd); f != nil {
+		return f
+	}
+
 	// Quadratic sieve:
 	// Define f(x) = x^2 - n.  We wish to find x such that f(x) is smooth.
 	// We will take x starting at ceil(sqrt(n)).
