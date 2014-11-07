@@ -2,7 +2,6 @@ package factorlib
 
 import (
 	"fmt"
-	"math/big"
 	"math/rand"
 )
 
@@ -15,45 +14,13 @@ const window = 1 << 8
 // Records f(x) == product(factors)*remainder
 // The values in factors are indexes into the factor base
 type sieveResult struct {
-	x         big.Int
+	x         bigint
 	factors   []uint
 	remainder int64
 }
 
-// Find values of x for which f(x) = a x^2 + b x + c factors (or almost factors) over fb.
-func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand) []sieveResult {
-	var result []sieveResult
-
-	maxp := fb[len(fb)-1]
-	var bigmaxp2 big.Int
-	bigmaxp2.SetInt64(maxp * maxp)
-	fmt.Printf("maxp=%d maxp2=%d len(fb)=%d\n", maxp, &bigmaxp2, len(fb))
-
-	// find x0 which is the minarg of ax^2+bx+c:
-	//   d/dx(ax^2+bx+c) = 0
-	//   2ax + b = 0
-	//   x = -b/2a
-	// so choose x0=-b/2a as the midpoint of our sieve
-
-	var x0 big.Int
-	x0.Div(&b, &a)
-	x0.Rsh(&x0, 1)
-	x0.Neg(&x0)
-	fmt.Printf("x0:%d\n", &x0)
-
-	// starting point
-	x0.Sub(&x0, big.NewInt(sieverange))
-
-	sieve := make([]byte, window)
-
-	// temporaries
-	var f, g, x, r, bigp, bigwindow big.Int
-	bigwindow.SetInt64(window)
-	var factors []uint
-
-	// find starting points
-	si := makeSieveInfo2(a, b, c, x0, fb, rnd)
-
+func sieveinner(sieve []byte, si []sieveinfo2, threshold byte) []int {
+	var r []int
 	for i := 0; i < 2*sieverange; i += window {
 		// clear sieve
 		for j := 0; j < window; j++ {
@@ -71,66 +38,77 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand) []sieveResult {
 			}
 			f.off = int32(j - window) // for next time
 		}
-
-		// check sieve entries for big numbers, indicating smooth f(x).
-		f.Mul(&a, &x0)
-		f.Add(&f, &b)
-		f.Mul(&f, &x0)
-		f.Add(&f, &c)
-		fmt.Printf("x:%d f:%d\n", &x0, &f)
-
-		x0.Add(&x0, &bigwindow)
-
-		g.Mul(&a, &x0)
-		g.Add(&g, &b)
-		g.Mul(&g, &x0)
-		g.Add(&g, &c)
-
-		min := &f
-		if g.Cmp(min) < 0 {
-			min = &g
-		}
-		fmt.Printf("min: %d\n", min)
-		threshold := byte(min.BitLen()) - 2*log2(maxp)
-		fmt.Printf("threshold: %d\n", threshold)
-
 		for j := 0; j < window; j++ {
-			if sieve[j] < threshold {
-				// TODO: in testing mode, check if f(x) is smooth.  If so, report a false negative.
-				continue
+			if sieve[j] >= threshold {
+				r = append(r, i+j)
 			}
-
-			// compute f(x)
-			x.SetInt64(int64(j))
-			x.Add(&x, &x0)
-			f.Mul(&a, &x)
-			f.Add(&f, &b)
-			f.Mul(&f, &x)
-			f.Add(&f, &c)
-
-			// trial divide f by the factor base
-			// accumulate factor base indexes of factors
-			factors = factors[:0]
-			for k, p := range fb {
-				bigp.SetInt64(p)
-				for r.Mod(&f, &bigp).Sign() == 0 {
-					f.Div(&f, &bigp)
-					factors = append(factors, uint(k))
-				}
-			}
-
-			// if remainder > B^2, it's too big, might not be prime.
-			if f.Cmp(&bigmaxp2) > 0 {
-				//fmt.Printf("  false positive y=%d z=%d threshold=%d sieve[i]=%d log2(y)=%d log2(y/z)=%d\n", y, bigz, threshold, sieve[i], y.BitLen(), x.Div(y, bigz).BitLen())
-				continue
-			}
-
-			var sr sieveResult
-			sr.x.Set(&x)
-			sr.factors = dup(factors)
-			sr.remainder = f.Int64()
-			result = append(result, sr)
 		}
+	}
+	return r
+}
+
+// Find values of x for which f(x) = a x^2 + b x + c factors (within one bigprime) over fb.
+// requires: a > 0
+func sievesmooth(a, b, c bigint, fb []int64, rnd *rand.Rand) []sieveResult {
+	var result []sieveResult
+
+	maxp := fb[len(fb)-1]
+	bigmaxp2 := NewBig(maxp).Square()
+	fmt.Printf("maxp=%d maxp2=%d len(fb)=%d\n", maxp, bigmaxp2, len(fb))
+
+	// find approximate zero crossings
+	d := b.Square().Sub(a.Mul(c).Lsh(2))
+	if d.Sign() < 0 {
+		panic("polynomial has no roots")
+		// TODO: choose min instead?  Then x = -b/2a
+	}
+	d = d.SqrtFloor()
+	x := b.Neg().Add(d).Div(a).Rsh(1)
+	//x2 := b.Neg().Sub(d).Div(a).Rsh(1)
+	// TODO: sieve around x2 also? (if d != 0)
+
+	// starting point
+	x0 := x.Sub64(sieverange)
+
+	sieve := make([]byte, window) // TODO: cache this?
+
+	var factors []uint
+
+	// find starting points
+	si := makeSieveInfo2(a, b, c, x0, fb, rnd)
+
+	// pick threshold
+	startf := a.Mul(x0).Add(b).Mul(x0).Add(c)
+	fmt.Printf("startf: %d\n", startf)
+	threshold := byte(startf.BitLen()) - 2*log2(maxp) // TODO: subtract more?
+	fmt.Printf("threshold: %d\n", threshold)
+	
+	// sieve to find any potential smooth f(x)
+	res := sieveinner(sieve, si, threshold)
+	
+	// check potential results using trial factorization
+	for _, i := range res {
+		// compute f(x)
+		x := x0.Add64(int64(i))
+		f := a.Mul(x).Add(b).Mul(x).Add(c)
+		
+		// trial divide f by the factor base
+		// accumulate factor base indexes of factors
+		factors = factors[:0]
+		for k, p := range fb {
+			for f.Mod64(p) == 0 {
+				f = f.Div64(p)
+				factors = append(factors, uint(k))
+			}
+		}
+		
+		// if remainder > B^2, it's too big, might not be prime.
+		if f.Cmp(bigmaxp2) > 0 {
+			//fmt.Printf("  false positive y=%d z=%d threshold=%d sieve[i]=%d log2(y)=%d log2(y/z)=%d\n", y, bigz, threshold, sieve[i], y.BitLen(), x.Div(y, bigz).BitLen())
+			continue
+		}
+		
+		result = append(result, sieveResult{x, dup(factors), f.Int64()})
 	}
 	return result
 }
@@ -141,9 +119,8 @@ type sieveinfo2 struct {
 	off  int32 // working offset in sieve array
 }
 
-func makeSieveInfo2(a, b, c big.Int, start big.Int, fb []int64, rnd *rand.Rand) []sieveinfo2 {
+func makeSieveInfo2(a, b, c bigint, start bigint, fb []int64, rnd *rand.Rand) []sieveinfo2 {
 	var si []sieveinfo2
-	var biga, bigb, bigc, bigpk, m big.Int
 
 	for _, p := range fb {
 		pk := p
@@ -153,14 +130,13 @@ func makeSieveInfo2(a, b, c big.Int, start big.Int, fb []int64, rnd *rand.Rand) 
 				// smaller than than the maximum factor base prime.
 				break
 			}
-			bigpk.SetInt64(pk)
-			biga.Mod(&a, &bigpk)
-			bigb.Mod(&b, &bigpk)
-			bigc.Mod(&c, &bigpk)
+			am := a.Mod64(pk)
+			bm := b.Mod64(pk)
+			cm := c.Mod64(pk)
 
-			for _, r := range quadraticModP(biga.Int64(), bigb.Int64(), bigc.Int64(), pk, rnd) {
+			for _, r := range quadraticModP(am, bm, cm, pk, rnd) {
 				// find first pk*i+r which is >= start
-				s := m.Mod(&start, &bigpk).Int64()
+				s := start.Mod64(pk)
 				off := (r + pk - s) % pk
 				si = append(si, sieveinfo2{int32(pk), log2(p), int32(off)})
 				fmt.Printf("%#v\n", si[len(si)-1])
