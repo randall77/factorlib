@@ -47,7 +47,7 @@ func sieveinner(sieve []byte, si []sieveinfo2, threshold byte) []int {
 	return r
 }
 
-// Find values of x for which f(x) = a x^2 + b x + c factors (within one bigprime) over fb.
+// Find values of x for which f(x) = a x^2 + b x + c factors (within one bigprime) over the primes in fb.
 // requires: a > 0
 func sievesmooth(a, b, c bigint, fb []int64, rnd *rand.Rand) []sieveResult {
 	var result []sieveResult
@@ -95,6 +95,10 @@ func sievesmooth(a, b, c bigint, fb []int64, rnd *rand.Rand) []sieveResult {
 		// trial divide f by the factor base
 		// accumulate factor base indexes of factors
 		factors = factors[:0]
+		if f.Sign() < 0 {
+			factors = append(factors, -1)
+			f = f.Neg()
+		}
 		for k, p := range fb {
 			for f.Mod64(p) == 0 {
 				f = f.Div64(p)
@@ -137,7 +141,7 @@ func makeSieveInfo2(a, b, c bigint, start bigint, fb []int64, rnd *rand.Rand) []
 			for _, r := range quadraticModP(am, bm, cm, pk, rnd) {
 				// find first pk*i+r which is >= start
 				s := start.Mod64(pk)
-				off := (r + pk - s) % pk
+				off := (r - s + pk) % pk
 				si = append(si, sieveinfo2{int32(pk), log2(p), int32(off)})
 				fmt.Printf("%#v\n", si[len(si)-1])
 			}
