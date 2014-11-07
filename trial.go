@@ -1,7 +1,6 @@
 package factorlib
 
 import (
-	"math/big"
 	"math/rand"
 )
 
@@ -10,14 +9,11 @@ func init() {
 }
 
 // trial tries dividing by 2,3,5,7,11,... until a factor is found.
-func trial(n big.Int, rnd *rand.Rand) []big.Int {
-	var p, r big.Int
+func trial(n bigint, rnd *rand.Rand) []bigint {
 	for i := 0; ; i++ {
-		p.SetInt64(getPrime(i))
-		r.Mod(&n, &p)
-		if r.Sign() == 0 {
-			r.Div(&n, &p)
-			v := [2]big.Int{p, r}
+		p := getPrime(i)
+		if n.Mod64(p) == 0 {
+			v := [2]bigint{NewBig(p), n.Div64(p)}
 			return v[:]
 		}
 	}

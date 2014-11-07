@@ -7,20 +7,16 @@ import (
 	"sort"
 )
 
-// helpful constants
-var zero = *big.NewInt(0)
-var one = *big.NewInt(1)
-var two = *big.NewInt(2)
-
 // Set of factoring algorithms to choose from.
 // Algorithms can add themselves here in an initializer.
 // Eventually, we should choose one automagically.
-var factorizers = map[string]func(big.Int, *rand.Rand) []big.Int{}
+var factorizers = map[string]func(bigint, *rand.Rand) []bigint{}
 
 // Factor returns the prime factorization of n.
 // alg is a hint about which factoring algorithm to choose.
 // rnd is a random source for use by the factoring algorithm.
-func Factor(n big.Int, alg string, rnd *rand.Rand) []big.Int {
+func Factor(n_ *big.Int, alg string, rnd *rand.Rand) []*big.Int {
+	n := NewBigFromBig(n_)
 	// figure out the algorithm to use
 	split := factorizers[alg]
 	if split == nil {
@@ -39,8 +35,7 @@ func Factor(n big.Int, alg string, rnd *rand.Rand) []big.Int {
 	}
 
 	// Main loop.  Keep splitting factors until they are all prime.
-	var m big.Int
-	factors := []big.Int{n}
+	factors := []bigint{n}
 	for i := 0; i < len(factors); {
 		f := factors[i]
 
@@ -56,14 +51,14 @@ func Factor(n big.Int, alg string, rnd *rand.Rand) []big.Int {
 		d := split(f, rnd)
 
 		// check answer
-		m.SetInt64(1)
+		m := one
 		for _, x := range d {
-			if x.Cmp(&one) == 0 || x.Cmp(&f) == 0 {
+			if x.Cmp(one) == 0 || x.Cmp(f) == 0 {
 				panic("trivial factor")
 			}
-			m.Mul(&m, &x)
+			m = m.Mul(x)
 		}
-		if m.Cmp(&f) != 0 {
+		if m.Cmp(f) != 0 {
 			panic("splitter failed")
 		}
 
@@ -76,19 +71,23 @@ func Factor(n big.Int, alg string, rnd *rand.Rand) []big.Int {
 	sort.Sort(byValue(factors))
 
 	// Check final result.
-	m.SetInt64(1)
+	m := one
 	for _, f := range factors {
-		m.Mul(&m, &f)
+		m = m.Mul(f)
 	}
-	if m.Cmp(&n) != 0 {
+	if m.Cmp(n) != 0 {
 		panic("factorization failed")
 	}
-	return factors
+	var factors_ []*big.Int
+	for _, f := range factors {
+		factors_ = append(factors_, f.GetBig())
+	}
+	return factors_
 }
 
 // sort *big.Int in nondecreasing order
-type byValue []big.Int
+type byValue []bigint
 
 func (a byValue) Len() int           { return len(a) }
 func (a byValue) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byValue) Less(i, j int) bool { return a[i].Cmp(&a[j]) < 0 }
+func (a byValue) Less(i, j int) bool { return a[i].Cmp(a[j]) < 0 }

@@ -96,7 +96,8 @@ func sievesmooth(a, b, c bigint, fb []int64, rnd *rand.Rand) []sieveResult {
 		// accumulate factor base indexes of factors
 		factors = factors[:0]
 		if f.Sign() < 0 {
-			factors = append(factors, -1)
+			// TODO: add -1 to factor base
+			//factors = append(factors, -1)
 			f = f.Neg()
 		}
 		for k, p := range fb {
@@ -143,10 +144,32 @@ func makeSieveInfo2(a, b, c bigint, start bigint, fb []int64, rnd *rand.Rand) []
 				s := start.Mod64(pk)
 				off := (r - s + pk) % pk
 				si = append(si, sieveinfo2{int32(pk), log2(p), int32(off)})
-				fmt.Printf("%#v\n", si[len(si)-1])
+				//fmt.Printf("%#v\n", si[len(si)-1])
 			}
 			pk *= p
 		}
 	}
 	return si
+}
+
+func init() {
+	factorizers["qs2"] = qs2
+}
+
+func qs2(n bigint, rnd *rand.Rand) []bigint {
+	// qs does not work for powers of a single prime.  Check that first.
+	if f := primepower(n, rnd); f != nil {
+		return f
+	}
+
+	// first, pick a factor base
+	fb, a := makeFactorBase(n)
+	if a != 0 {
+		return []bigint{NewBig(a), n.Div64(a)}
+	}
+
+	for _, r := range sievesmooth(NewBig(1), NewBig(0), n.Neg(), fb, rnd) {
+		fmt.Printf("f(%d)= prod %v * %d\n", r.x, r.factors, r.remainder)
+	}
+	return nil
 }

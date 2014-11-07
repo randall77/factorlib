@@ -179,48 +179,6 @@ func TestSqrtModN(t *testing.T) {
 	}
 }
 
-func TestSqrtFloor(t *testing.T) {
-	b := big.NewInt(0)
-	m := big.NewInt(0)
-	for i := int64(0); i < 1000; i++ {
-		b.SetInt64(i)
-		c := sqrtFloor(b)
-		m.Set(c)
-		m.Mul(m, m)
-		if m.Cmp(b) > 0 {
-			t.Errorf("sqrtFloor(%d) = %d, too large", b, c)
-		}
-		m.Set(c)
-		m.Add(c, &one)
-		m.Mul(m, m)
-		if m.Cmp(b) <= 0 {
-			t.Errorf("sqrtFloor(%d) = %d, too small", b, c)
-		}
-	}
-}
-func TestSqrtCeil(t *testing.T) {
-	b := big.NewInt(0)
-	m := big.NewInt(0)
-	for i := int64(1); i < 1000; i++ {
-		b.SetInt64(i)
-		c := sqrtCeil(b)
-		m.Set(c)
-		m.Mul(m, m)
-		if m.Cmp(b) < 0 {
-			t.Errorf("sqrtCeil(%d) = %d, too small", b, c)
-		}
-		m.Set(c)
-		m.Sub(c, &one)
-		m.Mul(m, m)
-		if m.Cmp(b) >= 0 {
-			t.Errorf("sqrtCeil(%d) = %d, too large", b, c)
-		}
-	}
-	if sqrtCeil(&zero).Sign() != 0 {
-		t.Errorf("sqrtCeil(0) != 0")
-	}
-}
-
 func TestQuadraticModP(t *testing.T) {
 	rnd := rand.New(rand.NewSource(123))
 	for i := 0; i < 25; i++ {

@@ -3,7 +3,6 @@ package factorlib
 import (
 	"fmt"
 	"github.com/randall77/factorlib/linear"
-	"math/big"
 	"math/rand"
 )
 
@@ -11,7 +10,7 @@ func init() {
 	factorizers["qs"] = qs
 }
 
-func qs(n big.Int, rnd *rand.Rand) []big.Int {
+func qs(n bigint, rnd *rand.Rand) []bigint {
 	// qs does not work for powers of a single prime.  Check that first.
 	if f := primepower(n, rnd); f != nil {
 		return f
@@ -43,19 +42,15 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 
 	// first, pick a factor base
 	fb, a := makeFactorBase(n)
-	if a.Sign() != 0 {
-		var b big.Int
-		b.Div(&n, &a)
-		return []big.Int{a, b}
+	if a != 0 {
+		return []bigint{NewBig(a), n.Div64(a)}
 	}
 
 	maxp := fb[len(fb)-1]
-	var bigmaxp2 big.Int
-	bigmaxp2.SetInt64(maxp * maxp)
-	fmt.Printf("maxp=%d maxp2=%d len(fb)=%d\n", maxp, maxp*maxp, len(fb))
+	fmt.Printf("maxp=%d len(fb)=%d\n", maxp, len(fb))
 
 	// The x we start with
-	start := *sqrtCeil(&n)
+	start := n.SqrtCeil()
 
 	si := makeSieveInfo(n, start, fb, rnd)
 
@@ -66,8 +61,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 
 	sieve := make([]byte, sievelen)
 
-	// temporary storage
-	var x, y, bigz, r, bigp, t big.Int
+	// factors we find
 	var factors []uint
 
 	// matrix is used to do gaussian elimination on mod 2 exponents.
@@ -78,7 +72,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 	// where f are small primes (indexes into factor base) and
 	// p is a large prime.
 	type largerecord struct {
-		x big.Int
+		x bigint
 		f []uint
 	}
 	largeprimes := map[int64]largerecord{}
@@ -113,9 +107,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 		}
 
 		// check sieve entries for big numbers, indicating smooth f(x).
-		t.Mul(&start, &start)
-		t.Sub(&t, &n)
-		threshold := byte(t.BitLen()) - 2*log2(maxp)
+		threshold := byte(start.Square().Sub(n).BitLen()) - 2*log2(maxp)
 		for i := 0; i < sievelen; i++ {
 			if sieve[i] < threshold {
 				// TODO: in testing mode, check if x^2-n is smooth.
@@ -124,36 +116,32 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 			//fmt.Printf("%d+%d %d %d\n", start, i, sieve[i], threshold)
 
 			// compute x, y=f(x)
-			x.SetInt64(int64(i))
-			x.Add(&start, &x)
-			y.Mul(&x, &x)
-			y.Sub(&y, &n)
+			x := start.Add64(int64(i))
+			y := x.Square().Sub(n)
 
 			// trial divide y by the factor base
 			// accumulate factor base indexes of factors
-			bigz.Set(&y)
 			factors = factors[:0]
 			for i, p := range fb {
-				bigp.SetInt64(p)
-				for r.Mod(&bigz, &bigp).Sign() == 0 {
-					bigz.Div(&bigz, &bigp)
+				for y.Mod64(p) == 0 {
+					y = y.Div64(p)
 					factors = append(factors, uint(i))
 				}
 			}
 
 			// if remainder > B^2, it's too big
-			if bigz.Cmp(&bigmaxp2) > 0 {
+			if y.Cmp64(maxp*maxp) > 0 {
 				//fmt.Printf("  false positive y=%d z=%d threshold=%d sieve[i]=%d log2(y)=%d log2(y/z)=%d\n", y, bigz, threshold, sieve[i], y.BitLen(), x.Div(y, bigz).BitLen())
 				continue
 			}
 
-			z := bigz.Int64()
+			z := y.Int64()
 			if z > 1 {
 				// try to find another record with the same largeprime
 				lr, ok := largeprimes[z]
 				if !ok {
 					var lr largerecord
-					lr.x.Set(&x)
+					lr.x = x
 					lr.f = dup(factors)
 					// haven't seen this large prime yet.  Save record for later
 					largeprimes[z] = lr
@@ -164,14 +152,10 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				// x1^2 === prod(f1) * largeprime
 				// x2^2 === prod(f2) * largeprime
 				//fmt.Printf("  largeprime %d match\n", bigz)
-				x.Mul(&x, &lr.x)
-				x.Mod(&x, &n)
-				y.ModInverse(&bigz, &n) // TODO: could bigz divide n?
-				x.Mul(&x, &y)
-				x.Mod(&x, &n)
+				x = x.Mul(lr.x).Mod(n).Mul(y.ModInv(n)).Mod(n) // TODO: could y divide n?
 				factors = append(factors, lr.f...)
 			}
-			fmt.Printf("eqn%d/%d %d^2 === ", m.Rows(), len(fb), &x)
+			fmt.Printf("eqn%d/%d %d^2 === ", m.Rows(), len(fb), x)
 			for j, i := range factors {
 				if j > 0 {
 					fmt.Printf("·")
@@ -180,7 +164,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 			}
 			fmt.Printf("\n")
 			var e eqn
-			e.x.Set(&x)
+			e.x = x
 			e.f = dup(factors)
 			idlist := m.AddRow(factors, e)
 			if idlist == nil {
@@ -189,14 +173,12 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 
 			// we found a set of equations with all even powers
 			// compute a and b where a^2 === b^2 mod n
-			var a, b big.Int
-			a.SetInt64(1)
-			b.SetInt64(1)
+			a := one
+			b := one
 			odd := make([]bool, len(fb))
 			for _, id := range idlist {
 				e := id.(eqn)
-				a.Mul(&a, &e.x)
-				a.Mod(&a, &n)
+				a = a.Mul(e.x).Mod(n)
 				for _, i := range e.f {
 					if !odd[i] {
 						// first occurrence of this factor
@@ -204,9 +186,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 						continue
 					}
 					// second occurrence of this factor
-					t.SetInt64(fb[i])
-					b.Mul(&b, &t)
-					b.Mod(&b, &n)
+					b = b.Mul64(fb[i]).Mod(n)
 					odd[i] = false
 				}
 			}
@@ -218,51 +198,46 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				}
 			}
 
-			if a.Cmp(&b) == 0 {
+			if a.Cmp(b) == 0 {
 				// trivial equation, ignore it
 				fmt.Println("triv A")
 				continue
 			}
-			t.Add(&a, &b)
-			if t.Cmp(&n) == 0 {
+			if a.Add(b).Cmp(n) == 0 {
 				// trivial equation, ignore it
 				fmt.Println("triv B")
 				continue
 			}
 
-			t.GCD(nil, nil, &t, &n)
-			r.Div(&n, &t)
-			return []big.Int{t, r}
+			r := a.Add(b).GCD(n)
+			return []bigint{r, n.Div(r)}
 		}
 
-		start.Add(&start, x.SetInt64(int64(sievelen)))
+		start = start.Add64(int64(sievelen))
 	}
 }
 
 // x^2 === prod(f) mod n
 // f is a list of indexes into the factor base
 type eqn struct {
-	x big.Int
+	x bigint
 	f []uint
 }
 
 // pick some prime factors for our factor base.  If we happen
 // upon a factor of n, return it instead.
-func makeFactorBase(n big.Int) ([]int64, big.Int) {
+func makeFactorBase(n bigint) ([]int64, int64) {
 	// upper limit on prime factors (TODO: dependent on n) that we sieve with
 	const B = 50000
 	var fb []int64
-	var biga, bigp big.Int
 	for i := 0; ; i++ {
 		p := getPrime(i)
 		if p > B {
-			return fb, zero
+			return fb, 0
 		}
-		bigp.SetInt64(p)
-		biga.Mod(&n, &bigp)
-		a := biga.Int64()
+		a := n.Mod64(p)
 		if a == 0 {
-			return nil, bigp
+			return nil, p
 		}
 		if quadraticResidue(a, p) {
 			// if x^2 == n mod p has no solutions, then
@@ -279,9 +254,8 @@ type sieveinfo struct {
 	off1, off2 int32 // starting offsets in sieve array
 }
 
-func makeSieveInfo(n big.Int, start big.Int, fb []int64, rnd *rand.Rand) []sieveinfo {
+func makeSieveInfo(n bigint, start bigint, fb []int64, rnd *rand.Rand) []sieveinfo {
 	var si []sieveinfo
-	var bigpk, biga, m big.Int
 
 	for _, p := range fb {
 		pk := p
@@ -289,16 +263,14 @@ func makeSieveInfo(n big.Int, start big.Int, fb []int64, rnd *rand.Rand) []sieve
 			if pk > fb[len(fb)-1] {
 				break
 			}
-			bigpk.SetInt64(pk)
-			biga.Mod(&n, &bigpk)
-			z1 := sqrtModPK(biga.Int64(), p, k, rnd) // find solution to x^2 == a mod p^k
+			z1 := sqrtModPK(n.Mod64(pk), p, k, rnd) // find solution to x^2 == a mod p^k
 			if z1 == 0 {
 				panic("factor base divides n")
 			}
 			z2 := pk - z1
 
 			// adjust to start
-			s := m.Mod(&start, &bigpk).Int64()
+			s := start.Mod64(pk)
 			off1 := z1 - s
 			if off1 < 0 {
 				off1 += pk

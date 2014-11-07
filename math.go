@@ -8,7 +8,7 @@ import (
 // generic math routines
 //
 // There are often two versions of each routine, a int64 one and a
-// big.Int one.  The int64 ones should only be used if arguments are
+// bigint one.  The int64 ones should only be used if arguments are
 // known to be < 2^31. (That leaves room for a*x+b*y computations
 // without overflowing.)
 
@@ -239,32 +239,33 @@ func sqrtModN(a int64, n []primePower, rnd *rand.Rand) int64 {
 
 // returns true iff x^2 == a mod p has a solution for x.
 // requires: 0 <= a < p, p prime
-func quadraticResidueBig(a, p *big.Int) bool {
-	if a.Cmp(&two) < 0 {
+func quadraticResidueBig(a, p bigint) bool {
+	if a.Cmp(two) < 0 {
 		return true
 	}
 	// a is a quadratic residue (x^2 == a has a solution) iff
 	// a^((p-1)/2) == 1 mod p.
-	e := big.NewInt(0).Rsh(p, 1)
-	return e.Exp(a, e, p).Cmp(&one) == 0
+	e := p.Rsh(1)
+	return a.ExpMod(e, p).Cmp(one) == 0
 }
 
 // solves x^2 == a mod p
 // returns nil if there is no solution.
-func sqrtModPBig(n, p *big.Int, rnd *rand.Rand) *big.Int {
-	if n.Cmp(&two) < 0 {
+func sqrtModPBig(n, p bigint, rnd *rand.Rand) bigint {
+	if n.Cmp(two) < 0 {
 		return n
 	}
 	if p.Bit(1) == 1 { // p == 3 mod 4
 		// result = n^((p+1)/4) mod p
-		x := big.NewInt(0).Add(p, &one)
+		x := new(big.Int)
+		x.Add(p.v, one.v)
 		x.Rsh(x, 2)
-		x.Exp(n, x, p)
-		return x
+		x.Exp(n.v, x, p.v)
+		return bigint{x}
 	}
 	// p == 1 mod 4
 	// Cipolla's algorithm (http://en.wikipedia.org/wiki/Cipolla%27s_algorithm)
-
+	/*
 	// pick a quadratic nonresidue for a
 	a := big.NewInt(0)
 	for {
@@ -332,43 +333,8 @@ func sqrtModPBig(n, p *big.Int, rnd *rand.Rand) *big.Int {
 		panic("bad sqrtMod")
 	}
 	return r0
-}
-
-// return floor(sqrt(x)).
-func sqrtFloor(x *big.Int) *big.Int {
-	if x.Sign() == 0 {
-		return x
-	}
-	b := uint(x.BitLen())
-
-	// invariant lo <= sqrt(x) < hi
-	lo := big.NewInt(1)
-	lo.Lsh(lo, (b-1)/2)
-	hi := big.NewInt(1)
-	hi.Lsh(hi, (b+1)/2)
-	m := big.NewInt(0)
-	m2 := big.NewInt(0)
-	for {
-		m.Add(lo, hi).Rsh(m, 1)
-		if m.Cmp(lo) == 0 {
-			return lo
-		}
-		m2.Mul(m, m)
-		if m2.Cmp(x) <= 0 {
-			lo, m = m, lo
-		} else {
-			hi, m = m, hi
-		}
-	}
-}
-func sqrtCeil(x *big.Int) *big.Int {
-	y := sqrtFloor(x)
-	y2 := big.NewInt(0)
-	y2.Mul(y, y)
-	if y2.Cmp(x) != 0 {
-		y = y2.Add(y, &one)
-	}
-	return y
+*/
+	return zero
 }
 
 // solve ax^2+bx+c==0 mod p
