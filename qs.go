@@ -47,6 +47,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 	if a != 0 {
 		return []big.Int{big.Int64(a), n.Div64(a)}
 	}
+	fb = fb[1:]
 
 	maxp := fb[len(fb)-1]
 	fmt.Printf("maxp=%d len(fb)=%d\n", maxp, len(fb))
@@ -233,7 +234,7 @@ type eqn struct {
 func makeFactorBase(n big.Int) ([]int64, int64) {
 	// upper limit on prime factors (TODO: dependent on n) that we sieve with
 	const B = 50000
-	var fb []int64
+	fb := []int64{-1}
 	s := &big.Scratch{}
 	for i := 0; ; i++ {
 		p := primes.Get(i)

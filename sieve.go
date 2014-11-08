@@ -3,14 +3,15 @@ package factorlib
 import (
 	"fmt"
 	"github.com/randall77/factorlib/big"
+	"github.com/randall77/factorlib/linear"
 	"math/rand"
 )
 
 // sieve [-sieverange,sieverange) around mininum point.
-const sieverange = 1 << 10
+const sieverange = 1 << 14
 
 // use an array of this size to do the sieving
-const window = 1 << 8
+const window = 1 << 9
 
 // Records f(x) == product(factors)*remainder
 // The values in factors are indexes into the factor base
@@ -163,8 +164,73 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 		return []big.Int{big.Int64(a), n.Div64(a)}
 	}
 
+	// matrix is used to do gaussian elimination on mod 2 exponents.
+	m := linear.NewMatrix(uint(len(fb)))
+
+	
 	for _, r := range sievesmooth(big.Int64(1), big.Int64(0), n.Neg(), fb, rnd) {
-		fmt.Printf("f(%d)= prod %v * %d\n", r.x, r.factors, r.remainder)
+		fmt.Printf("%d^2-%d=%d=", r.x, n, r.x.Mul(r.x).Sub(n))
+		for i, f := range r.factors {
+			if i != 0 {
+				fmt.Printf("·")
+			}
+			fmt.Printf("%d", fb[f])
+		}
+		if r.remainder != 1 {
+			fmt.Printf("·%d", r.remainder)
+		}
+		fmt.Println()
+		if r.remainder != 1 {
+			// TODO: big factor table
+			continue
+		}
+
+		idlist := m.AddRow(r.factors, eqn{r.x, dup(r.factors)})
+		if idlist == nil {
+			fmt.Println(m.Rows())
+			continue
+		}
+		
+		// we found a set of equations with all even powers
+		// compute a and b where a^2 === b^2 mod n
+		a := big.One
+		b := big.One
+		odd := make([]bool, len(fb))
+		for _, id := range idlist {
+			e := id.(eqn)
+			a = a.Mul(e.x).Mod(n)
+			for _, i := range e.f {
+				if !odd[i] {
+					// first occurrence of this factor
+					odd[i] = true
+					continue
+				}
+				// second occurrence of this factor
+				b = b.Mul64(fb[i]).Mod(n)
+				odd[i] = false
+			}
+		}
+		for i, p := range fb {
+			if odd[i] {
+				fmt.Printf("prime i=%d p=%d\n", i, p)
+				panic("gauss elim failed")
+			}
+		}
+
+		fmt.Printf("a:%d b:%d n:%d\n", a, b, n)
+		if a.Cmp(b) == 0 {
+			// trivial equation, ignore it
+			fmt.Println("triv A")
+			continue
+		}
+		if a.Add(b).Cmp(n) == 0 {
+			// trivial equation, ignore it
+			fmt.Println("triv B")
+			continue
+		}
+		
+		r := a.Add(b).GCD(n)
+		return []big.Int{r, n.Div(r)}
 	}
 	return nil
 }
