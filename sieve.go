@@ -60,55 +60,56 @@ func sievesmooth(a, b, c bigint, fb []int64, rnd *rand.Rand) []sieveResult {
 		panic("polynomial has no roots")
 		// TODO: choose min instead?  Then x = -b/2a
 	}
-	d = d.SqrtFloor()
-	x := b.Neg().Add(d).Div(a).Rsh(1)
+	x := b.Neg().Add(d.SqrtFloor()).Div(a).Rsh(1)
 	//x2 := b.Neg().Sub(d).Div(a).Rsh(1)
 	// TODO: sieve around x2 also? (if d != 0)
 
 	// starting point
 	x0 := x.Sub64(sieverange)
 
-	sieve := make([]byte, window) // TODO: cache this?
-
+	// results buffer
 	var factors []uint
 
 	// find starting points
 	si := makeSieveInfo2(a, b, c, x0, fb, rnd)
 
 	// pick threshold
-	startf := a.Mul(x0).Add(b).Mul(x0).Add(c)
-	threshold := byte(startf.BitLen()) - 2*log2(maxp) // TODO: subtract more?
+	threshold := byte(a.Mul(x0).Add(b).Mul(x0).Add(c).BitLen()) - 2*log2(maxp) // TODO: subtract more?
 	
 	// sieve to find any potential smooth f(x)
+	sieve := make([]byte, window) // TODO: cache this?
 	res := sieveinner(sieve, si, threshold)
 	
 	// check potential results using trial factorization
 	for _, i := range res {
 		// compute f(x)
 		x := x0.Add64(int64(i))
-		f := a.Mul(x).Add(b).Mul(x).Add(c)
+		y := a.Mul(x).Add(b).Mul(x).Add(c)
 		
 		// trial divide f by the factor base
 		// accumulate factor base indexes of factors
 		factors = factors[:0]
-		if f.Sign() < 0 {
-			factors = append(factors, 0)
-			f = f.Neg()
-		}
-		for k, p := range fb[1:] {
-			for f.Mod64(p) == 0 {
-				f = f.Div64(p)
-				factors = append(factors, uint(k+1))
+		for k, p := range fb {
+			if p == -1 {
+				if y.Sign() < 0 {
+					y = y.Neg()
+					factors = append(factors, uint(k))
+				}
+				continue
+			}
+			for y.Mod64(p) == 0 {
+				y = y.Div64(p)
+				factors = append(factors, uint(k))
 			}
 		}
 		
 		// if remainder > B^2, it's too big, might not be prime.
-		if f.Cmp64(maxp*maxp) > 0 {
+		if y.Cmp64(maxp*maxp) > 0 {
 			//fmt.Printf("  false positive y=%d z=%d threshold=%d sieve[i]=%d log2(y)=%d log2(y/z)=%d\n", y, bigz, threshold, sieve[i], y.BitLen(), x.Div(y, bigz).BitLen())
 			continue
 		}
 		
-		result = append(result, sieveResult{x, dup(factors), f.Int64()})
+		result = append(result, sieveResult{x, dup(factors), y.Int64()})
 	}
 	return result
 }
