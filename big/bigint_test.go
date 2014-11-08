@@ -1,4 +1,4 @@
-package factorlib
+package big
 
 import (
 	"math/big"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestCmp(t *testing.T) {
-	// possible bigints
+	// possible Ints
 	b := []string {
 		"-4","-3","-2","-1","0","1","2","3","4",
 		"9223372036854775807", // 2^63-1
@@ -35,7 +35,7 @@ func TestCmp(t *testing.T) {
 			c1 := x.Cmp64(y)
 			c2 := x.v.Cmp(big.NewInt(y))
 			if c1 != c2 {
-				t.Errorf("bad Cmp for %s and %d (bigint=%d big.Int=%d)", s, y, c1, c2)
+				t.Errorf("bad Cmp for %s and %d (Int=%d big.Int=%d)", s, y, c1, c2)
 			}
 		}
 	}

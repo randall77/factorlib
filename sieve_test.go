@@ -1,14 +1,15 @@
 package factorlib
 
 import (
+	"github.com/randall77/factorlib/big"
 	"math/rand"
 	"testing"
 )
 
 func TestSieve(t *testing.T) {
-	a := Big(23)
-	b := Big(-9813)
-	c := Big(1011)
+	a := big.Big(23)
+	b := big.Big(-9813)
+	c := big.Big(1011)
 
 	rnd := rand.New(rand.NewSource(123))
 
@@ -33,7 +34,7 @@ func TestSieve(t *testing.T) {
 	for _, r := range results {
 		x := r.x
 		y := a.Mul(x).Add(b).Mul(x).Add(c)
-		z := one
+		z := big.One
 		for _, f := range r.factors {
 			z = z.Mul64(fb[f])
 		}

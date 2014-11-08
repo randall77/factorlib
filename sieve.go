@@ -2,6 +2,7 @@ package factorlib
 
 import (
 	"fmt"
+	"github.com/randall77/factorlib/big"
 	"math/rand"
 )
 
@@ -14,7 +15,7 @@ const window = 1 << 8
 // Records f(x) == product(factors)*remainder
 // The values in factors are indexes into the factor base
 type sieveResult struct {
-	x         bigint
+	x         big.Int
 	factors   []uint
 	remainder int64
 }
@@ -49,7 +50,7 @@ func sieveinner(sieve []byte, si []sieveinfo2, threshold byte) []int {
 
 // Find values of x for which f(x) = a x^2 + b x + c factors (within one bigprime) over the primes in fb.
 // requires: a > 0
-func sievesmooth(a, b, c bigint, fb []int64, rnd *rand.Rand) []sieveResult {
+func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand) []sieveResult {
 	var result []sieveResult
 
 	maxp := fb[len(fb)-1]
@@ -120,7 +121,7 @@ type sieveinfo2 struct {
 	off  int32 // working offset in sieve array
 }
 
-func makeSieveInfo2(a, b, c bigint, start bigint, fb []int64, rnd *rand.Rand) []sieveinfo2 {
+func makeSieveInfo2(a, b, c big.Int, start big.Int, fb []int64, rnd *rand.Rand) []sieveinfo2 {
 	var si []sieveinfo2
 
 	for _, p := range fb[1:] {
@@ -147,7 +148,7 @@ func init() {
 	factorizers["qs2"] = qs2
 }
 
-func qs2(n bigint, rnd *rand.Rand) []bigint {
+func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 	// qs does not work for powers of a single prime.  Check that first.
 	if f := primepower(n, rnd); f != nil {
 		return f
@@ -156,10 +157,10 @@ func qs2(n bigint, rnd *rand.Rand) []bigint {
 	// first, pick a factor base
 	fb, a := makeFactorBase(n)
 	if a != 0 {
-		return []bigint{Big(a), n.Div64(a)}
+		return []big.Int{big.Big(a), n.Div64(a)}
 	}
 
-	for _, r := range sievesmooth(Big(1), Big(0), n.Neg(), fb, rnd) {
+	for _, r := range sievesmooth(big.Big(1), big.Big(0), n.Neg(), fb, rnd) {
 		fmt.Printf("f(%d)= prod %v * %d\n", r.x, r.factors, r.remainder)
 	}
 	return nil

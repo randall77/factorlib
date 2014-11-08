@@ -2,6 +2,7 @@ package factorlib
 
 import (
 	"math/rand"
+	"github.com/randall77/factorlib/big"
 )
 
 func init() {
@@ -11,16 +12,16 @@ func init() {
 }
 
 // If n is a prime power, factor n.  Otherwise, return nil.
-func primepower(n bigint, rnd *rand.Rand) []bigint {
+func primepower(n big.Int, rnd *rand.Rand) []big.Int {
 	// there is probably a faster way, but this is fast enough.
 	for i := 0; ; i++ {
 		p := getPrime(i)
 		x := root(n, p)
-		if x.Cmp(one) <= 0 {
+		if x.Cmp(big.One) <= 0 {
 			return nil
 		}
 		if x.Exp(p).Cmp(n) == 0 {
-			var a []bigint
+			var a []big.Int
 			for j := int64(0); j < p; j++ {
 				a = append(a, x)
 			}
@@ -30,8 +31,8 @@ func primepower(n bigint, rnd *rand.Rand) []bigint {
 }
 
 // computes floor(n^(1/k))
-func root(n bigint, k int64) bigint {
-	lo := one.Lsh(uint((int64(n.BitLen())-1)/k))
+func root(n big.Int, k int64) big.Int {
+	lo := big.One.Lsh(uint((int64(n.BitLen())-1)/k))
 	hi := lo.Lsh(1)
 	if lo.Exp(k).Cmp(n) > 0 {
 		panic("low too high")
@@ -47,7 +48,7 @@ func root(n bigint, k int64) bigint {
 			if lo.Exp(k).Cmp(n) > 0 {
 				panic("root too big")
 			}
-			if lo.Add(one).Exp(k).Cmp(n) <= 0 {
+			if lo.Add(big.One).Exp(k).Cmp(n) <= 0 {
 				panic("root too small")
 			}
 			return lo

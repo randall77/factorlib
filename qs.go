@@ -2,6 +2,7 @@ package factorlib
 
 import (
 	"fmt"
+	"github.com/randall77/factorlib/big"
 	"github.com/randall77/factorlib/linear"
 	"math/rand"
 )
@@ -10,7 +11,7 @@ func init() {
 	factorizers["qs"] = qs
 }
 
-func qs(n bigint, rnd *rand.Rand) []bigint {
+func qs(n big.Int, rnd *rand.Rand) []big.Int {
 	// qs does not work for powers of a single prime.  Check that first.
 	if f := primepower(n, rnd); f != nil {
 		return f
@@ -43,7 +44,7 @@ func qs(n bigint, rnd *rand.Rand) []bigint {
 	// first, pick a factor base
 	fb, a := makeFactorBase(n)
 	if a != 0 {
-		return []bigint{Big(a), n.Div64(a)}
+		return []big.Int{big.Big(a), n.Div64(a)}
 	}
 
 	maxp := fb[len(fb)-1]
@@ -72,7 +73,7 @@ func qs(n bigint, rnd *rand.Rand) []bigint {
 	// where f are small primes (indexes into factor base) and
 	// p is a large prime.
 	type largerecord struct {
-		x bigint
+		x big.Int
 		f []uint
 	}
 	largeprimes := map[int64]largerecord{}
@@ -173,8 +174,8 @@ func qs(n bigint, rnd *rand.Rand) []bigint {
 
 			// we found a set of equations with all even powers
 			// compute a and b where a^2 === b^2 mod n
-			a := one
-			b := one
+			a := big.One
+			b := big.One
 			odd := make([]bool, len(fb))
 			for _, id := range idlist {
 				e := id.(eqn)
@@ -210,7 +211,7 @@ func qs(n bigint, rnd *rand.Rand) []bigint {
 			}
 
 			r := a.Add(b).GCD(n)
-			return []bigint{r, n.Div(r)}
+			return []big.Int{r, n.Div(r)}
 		}
 
 		start = start.Add64(int64(sievelen))
@@ -220,13 +221,13 @@ func qs(n bigint, rnd *rand.Rand) []bigint {
 // x^2 === prod(f) mod n
 // f is a list of indexes into the factor base
 type eqn struct {
-	x bigint
+	x big.Int
 	f []uint
 }
 
 // pick some prime factors for our factor base.  If we happen
 // upon a factor of n, return it instead.
-func makeFactorBase(n bigint) ([]int64, int64) {
+func makeFactorBase(n big.Int) ([]int64, int64) {
 	// upper limit on prime factors (TODO: dependent on n) that we sieve with
 	const B = 50000
 	var fb []int64
@@ -254,7 +255,7 @@ type sieveinfo struct {
 	off1, off2 int32 // starting offsets in sieve array
 }
 
-func makeSieveInfo(n bigint, start bigint, fb []int64, rnd *rand.Rand) []sieveinfo {
+func makeSieveInfo(n big.Int, start big.Int, fb []int64, rnd *rand.Rand) []sieveinfo {
 	var si []sieveinfo
 
 	for _, p := range fb {

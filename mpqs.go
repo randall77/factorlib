@@ -2,6 +2,7 @@ package factorlib
 
 import (
 	"fmt"
+	"github.com/randall77/factorlib/big"
 	"math/rand"
 )
 
@@ -9,11 +10,11 @@ func init() {
 	factorizers["qs"] = qs
 }
 
-func mpqs(n bigint, rnd *rand.Rand) []bigint {
+func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 	// first, pick a factor base
 	fb, a := makeFactorBase(n)
 	if a != 0 {
-		return []bigint{Big(a), n.Div64(a)}
+		return []big.Int{big.Big(a), n.Div64(a)}
 	}
 
 	maxp := fb[len(fb)-1]
