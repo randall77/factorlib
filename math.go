@@ -267,3 +267,42 @@ func quadraticModP(a, b, c, p int64, rnd *rand.Rand) []int64 {
 	}
 	return r
 }
+
+// solve ax^2+bx+c==0 mod p
+//   0 <= a,b,c < p
+//   a != 0
+//   pk == p^k
+func quadraticModPK(a, b, c, p int64, k uint, pk int64, rnd *rand.Rand) []int64 {
+	if p == 2 {
+		if k > 1 {
+			// TODO: k > 1
+			return nil
+		}
+		// special case, easy to handle.
+		// (2 is not a unit mod 2, so 1/2a doesn't work when p==2)
+		if a^b == 0 {
+			if c == 0 {
+				return []int64{0, 1}
+			}
+			return nil
+		}
+		if c == 0 {
+			return []int64{0}
+		}
+		return []int64{1}
+	}
+
+	d := (b*b + 4*(pk-a)*c) % pk
+	e := d % p
+	if e == 0 || !quadraticResidue(e, p) {
+		// TODO: there might be solutions if e == 0.  Figure that out.
+		return nil
+	}
+	d = sqrtModPK(d, p, k, rnd)
+	i := modInv(2*a%pk, pk)
+	r := []int64{(pk - b + d) * i % pk}
+	if d != 0 {
+		r = append(r, (2*pk-b-d)*i%pk)
+	}
+	return r
+}

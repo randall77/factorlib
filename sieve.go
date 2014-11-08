@@ -129,14 +129,14 @@ func makeSieveInfo2(a, b, c big.Int, start big.Int, fb []int64, rnd *rand.Rand) 
 
 	for _, p := range fb[1:] {
 		pk := p
-		for k := uint(1); k < 2; k++ { // TODO: quadraticModPK
+		for k := uint(1); ; k++ {
 			if pk > fb[len(fb)-1] {
 				// Kind of arbitrary, but use powers of p as long as p^k is
 				// smaller than than the maximum factor base prime.
 				break
 			}
 			st := start.Mod64s(pk, s)
-			for _, r := range quadraticModP(a.Mod64s(pk, s), b.Mod64s(pk, s), c.Mod64s(pk, s), pk, rnd) {
+			for _, r := range quadraticModPK(a.Mod64s(pk, s), b.Mod64s(pk, s), c.Mod64s(pk, s), p, k, pk, rnd) {
 				// find first pk*i+r which is >= start
 				off := (r - st + pk) % pk
 				si = append(si, sieveinfo2{int32(pk), log2(p), int32(off)})
