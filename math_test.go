@@ -1,15 +1,13 @@
 package factorlib
 
 import (
-	"math/big"
 	"math/rand"
 	"testing"
 )
 
 func TestLog(t *testing.T) {
-	b := big.NewInt(0)
 	for n := int64(0); n <= 65536; n++ {
-		s := uint8(b.SetInt64(n).BitLen())
+		s := uint8(Big(n).BitLen())
 		r := log2(n)
 		if r != s {
 			t.Errorf("n=%d want %d, got %d", n, s, r)

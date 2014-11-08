@@ -16,7 +16,7 @@ var factorizers = map[string]func(bigint, *rand.Rand) []bigint{}
 // alg is a hint about which factoring algorithm to choose.
 // rnd is a random source for use by the factoring algorithm.
 func Factor(n_ *big.Int, alg string, rnd *rand.Rand) []*big.Int {
-	n := NewBigFromBig(n_)
+	n := BigFromBig(n_)
 	// figure out the algorithm to use
 	split := factorizers[alg]
 	if split == nil {

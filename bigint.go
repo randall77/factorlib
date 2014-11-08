@@ -14,10 +14,10 @@ type bigint struct {
 	v *big.Int
 }
 
-func NewBig(x int64) bigint {
+func Big(x int64) bigint {
 	return bigint{big.NewInt(x)}
 }
-func NewBigFromBig(x *big.Int) bigint {
+func BigFromBig(x *big.Int) bigint {
 	return bigint{new(big.Int).Set(x)}
 }
 
@@ -136,7 +136,7 @@ func (x bigint) Sign() int {
 func (x bigint) Cmp(y bigint) int {
 	return x.v.Cmp(y.v)
 }
-var minInt64 = NewBig(math.MinInt64)
+var minInt64 = Big(math.MinInt64)
 func (x bigint) Cmp64(y int64) int {
 	if x.BitLen() >= 64 {
 		if x.Sign() > 0 {
@@ -178,6 +178,6 @@ func (x bigint) Int64() int64 {
 }
 
 // helpful constants
-var zero = NewBig(0)
-var one = NewBig(1)
-var two = NewBig(2)
+var zero = Big(0)
+var one = Big(1)
+var two = Big(2)

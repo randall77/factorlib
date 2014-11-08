@@ -30,7 +30,7 @@ func TestCmp(t *testing.T) {
 		if !ok {
 			t.Errorf("bad format %s", s)
 		}
-		x := NewBigFromBig(v)
+		x := BigFromBig(v)
 		for _, y := range i {
 			c1 := x.Cmp64(y)
 			c2 := x.v.Cmp(big.NewInt(y))
@@ -43,7 +43,7 @@ func TestCmp(t *testing.T) {
 
 func TestSqrtFloor(t *testing.T) {
 	for i := int64(0); i < 1000; i++ {
-		b := NewBig(i)
+		b := Big(i)
 		c := b.SqrtFloor()
 		if c.Mul(c).Cmp(b) > 0 {
 			t.Errorf("%d.SqrtFloor() = %d, too large", b, c)
@@ -57,7 +57,7 @@ func TestSqrtFloor(t *testing.T) {
 
 func TestSqrtCeil(t *testing.T) {
 	for i := int64(1); i < 1000; i++ {
-		b := NewBig(i)
+		b := Big(i)
 		c := b.SqrtCeil()
 		if c.Mul(c).Cmp(b) < 0 {
 			t.Errorf("sqrtCeil(%d) = %d, too small", b, c)

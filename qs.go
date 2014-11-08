@@ -43,7 +43,7 @@ func qs(n bigint, rnd *rand.Rand) []bigint {
 	// first, pick a factor base
 	fb, a := makeFactorBase(n)
 	if a != 0 {
-		return []bigint{NewBig(a), n.Div64(a)}
+		return []bigint{Big(a), n.Div64(a)}
 	}
 
 	maxp := fb[len(fb)-1]

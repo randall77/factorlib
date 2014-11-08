@@ -53,8 +53,6 @@ func sievesmooth(a, b, c bigint, fb []int64, rnd *rand.Rand) []sieveResult {
 	var result []sieveResult
 
 	maxp := fb[len(fb)-1]
-	bigmaxp2 := NewBig(maxp).Square()
-	fmt.Printf("maxp=%d maxp2=%d len(fb)=%d\n", maxp, bigmaxp2, len(fb))
 
 	// find approximate zero crossings
 	d := b.Square().Sub(a.Mul(c).Lsh(2))
@@ -79,9 +77,7 @@ func sievesmooth(a, b, c bigint, fb []int64, rnd *rand.Rand) []sieveResult {
 
 	// pick threshold
 	startf := a.Mul(x0).Add(b).Mul(x0).Add(c)
-	fmt.Printf("startf: %d\n", startf)
 	threshold := byte(startf.BitLen()) - 2*log2(maxp) // TODO: subtract more?
-	fmt.Printf("threshold: %d\n", threshold)
 	
 	// sieve to find any potential smooth f(x)
 	res := sieveinner(sieve, si, threshold)
@@ -96,19 +92,18 @@ func sievesmooth(a, b, c bigint, fb []int64, rnd *rand.Rand) []sieveResult {
 		// accumulate factor base indexes of factors
 		factors = factors[:0]
 		if f.Sign() < 0 {
-			// TODO: add -1 to factor base
-			//factors = append(factors, -1)
+			factors = append(factors, 0)
 			f = f.Neg()
 		}
-		for k, p := range fb {
+		for k, p := range fb[1:] {
 			for f.Mod64(p) == 0 {
 				f = f.Div64(p)
-				factors = append(factors, uint(k))
+				factors = append(factors, uint(k+1))
 			}
 		}
 		
 		// if remainder > B^2, it's too big, might not be prime.
-		if f.Cmp(bigmaxp2) > 0 {
+		if f.Cmp64(maxp*maxp) > 0 {
 			//fmt.Printf("  false positive y=%d z=%d threshold=%d sieve[i]=%d log2(y)=%d log2(y/z)=%d\n", y, bigz, threshold, sieve[i], y.BitLen(), x.Div(y, bigz).BitLen())
 			continue
 		}
@@ -127,7 +122,7 @@ type sieveinfo2 struct {
 func makeSieveInfo2(a, b, c bigint, start bigint, fb []int64, rnd *rand.Rand) []sieveinfo2 {
 	var si []sieveinfo2
 
-	for _, p := range fb {
+	for _, p := range fb[1:] {
 		pk := p
 		for k := uint(1); k < 2; k++ { // TODO: quadraticModPK
 			if pk > fb[len(fb)-1] {
@@ -135,16 +130,11 @@ func makeSieveInfo2(a, b, c bigint, start bigint, fb []int64, rnd *rand.Rand) []
 				// smaller than than the maximum factor base prime.
 				break
 			}
-			am := a.Mod64(pk)
-			bm := b.Mod64(pk)
-			cm := c.Mod64(pk)
-
-			for _, r := range quadraticModP(am, bm, cm, pk, rnd) {
+			s := start.Mod64(pk)
+			for _, r := range quadraticModP(a.Mod64(pk), b.Mod64(pk), c.Mod64(pk), pk, rnd) {
 				// find first pk*i+r which is >= start
-				s := start.Mod64(pk)
 				off := (r - s + pk) % pk
 				si = append(si, sieveinfo2{int32(pk), log2(p), int32(off)})
-				//fmt.Printf("%#v\n", si[len(si)-1])
 			}
 			pk *= p
 		}
@@ -165,10 +155,10 @@ func qs2(n bigint, rnd *rand.Rand) []bigint {
 	// first, pick a factor base
 	fb, a := makeFactorBase(n)
 	if a != 0 {
-		return []bigint{NewBig(a), n.Div64(a)}
+		return []bigint{Big(a), n.Div64(a)}
 	}
 
-	for _, r := range sievesmooth(NewBig(1), NewBig(0), n.Neg(), fb, rnd) {
+	for _, r := range sievesmooth(Big(1), Big(0), n.Neg(), fb, rnd) {
 		fmt.Printf("f(%d)= prod %v * %d\n", r.x, r.factors, r.remainder)
 	}
 	return nil

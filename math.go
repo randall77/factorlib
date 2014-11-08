@@ -1,7 +1,6 @@
 package factorlib
 
 import (
-	"math/big"
 	"math/rand"
 )
 
@@ -235,106 +234,6 @@ func sqrtModN(a int64, n []primePower, rnd *rand.Rand) int64 {
 		panic("bad sqrt")
 	}
 	return r
-}
-
-// returns true iff x^2 == a mod p has a solution for x.
-// requires: 0 <= a < p, p prime
-func quadraticResidueBig(a, p bigint) bool {
-	if a.Cmp(two) < 0 {
-		return true
-	}
-	// a is a quadratic residue (x^2 == a has a solution) iff
-	// a^((p-1)/2) == 1 mod p.
-	e := p.Rsh(1)
-	return a.ExpMod(e, p).Cmp(one) == 0
-}
-
-// solves x^2 == a mod p
-// returns nil if there is no solution.
-func sqrtModPBig(n, p bigint, rnd *rand.Rand) bigint {
-	if n.Cmp(two) < 0 {
-		return n
-	}
-	if p.Bit(1) == 1 { // p == 3 mod 4
-		// result = n^((p+1)/4) mod p
-		x := new(big.Int)
-		x.Add(p.v, one.v)
-		x.Rsh(x, 2)
-		x.Exp(n.v, x, p.v)
-		return bigint{x}
-	}
-	// p == 1 mod 4
-	// Cipolla's algorithm (http://en.wikipedia.org/wiki/Cipolla%27s_algorithm)
-	/*
-	// pick a quadratic nonresidue for a
-	a := big.NewInt(0)
-	for {
-		a.Rand(rnd, p)
-		if !quadraticResidueBig(a, p) {
-			break
-		}
-	}
-
-	// compute a^2-n
-	d := big.NewInt(0).Exp(a, &two, p)
-	d.Sub(d, n)
-	if d.Sign() < 0 {
-		d.Add(d, p)
-	}
-
-	// number in F_p^2, x0 + x1 * w, where w = sqrt(a^2-n)
-	// compute (x0 + x1*w)^((p-1)/2)
-	x0 := a
-	x1 := big.NewInt(1)
-	r0 := big.NewInt(1)
-	r1 := big.NewInt(0)
-
-	m1 := big.NewInt(0)
-	m2 := big.NewInt(0)
-	m3 := big.NewInt(0)
-	m4 := big.NewInt(0)
-
-	// repeated sqaring of x, multiplying into r
-	q := big.NewInt(0).Add(p, &one)
-	q.Rsh(q, 1)
-	for q.Sign() != 0 {
-		if q.Bit(0) != 0 {
-			// r *= x
-			m1.Mul(r0, x0)
-			m2.Mul(r0, x1)
-			m3.Mul(r1, x0)
-			m4.Mul(r1, x1)
-			r0.Mul(m4, d)
-			r0.Add(r0, m1)
-			r1.Add(m2, m3)
-			r0.Mod(r0, p)
-			r1.Mod(r1, p)
-		}
-		// x *= x
-		m1.Mul(x0, x0)
-		m2.Mul(x0, x1)
-		m3.Mul(x1, x0)
-		m4.Mul(x1, x1)
-		x0.Mul(m4, d)
-		x0.Add(x0, m1)
-		x1.Add(m2, m3)
-		x0.Mod(x0, p)
-		x1.Mod(x1, p)
-
-		q.Rsh(q, 1)
-	}
-	if r1.Sign() != 0 {
-		panic("still in Z_p^2 - Z_p")
-	}
-	// check our answer
-	z := big.NewInt(0).Mul(r0, r0)
-	z.Mod(z, p)
-	if z.Cmp(n) != 0 {
-		panic("bad sqrtMod")
-	}
-	return r0
-*/
-	return zero
 }
 
 // solve ax^2+bx+c==0 mod p
