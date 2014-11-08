@@ -82,11 +82,11 @@ func sievesmooth(a, b, c bigint, fb []int64, rnd *rand.Rand) []sieveResult {
 	
 	// check potential results using trial factorization
 	for _, i := range res {
-		// compute f(x)
+		// compute y=f(x)
 		x := x0.Add64(int64(i))
 		y := a.Mul(x).Add(b).Mul(x).Add(c)
 		
-		// trial divide f by the factor base
+		// trial divide y by the factor base
 		// accumulate factor base indexes of factors
 		factors = factors[:0]
 		for k, p := range fb {
