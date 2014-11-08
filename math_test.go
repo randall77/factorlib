@@ -2,6 +2,7 @@ package factorlib
 
 import (
 	"github.com/randall77/factorlib/big"
+	"github.com/randall77/factorlib/primes"
 	"math/rand"
 	"testing"
 )
@@ -53,7 +54,7 @@ func TestModInv(t *testing.T) {
 
 func TestQR(t *testing.T) {
 	for i := 0; i < 1000; i++ {
-		p := getPrime(i)
+		p := primes.Get(i)
 
 		// find all quadratic residues
 		m := map[int64]struct{}{}
@@ -74,7 +75,7 @@ func TestQR(t *testing.T) {
 func TestSqrtModP(t *testing.T) {
 	rnd := rand.New(rand.NewSource(123))
 	for i := 0; i < 1000; i++ {
-		p := getPrime(i)
+		p := primes.Get(i)
 
 		// compute roots mod p
 		m := map[int64]int64{}
@@ -99,7 +100,7 @@ func TestSqrtModP(t *testing.T) {
 func TestSqrtModPK(t *testing.T) {
 	rnd := rand.New(rand.NewSource(123))
 	for i := 0; i < 1000; i++ {
-		p := getPrime(i)
+		p := primes.Get(i)
 		for k := uint(1); ; k++ {
 			pk := exp(p, k)
 			if pk > 10000 {
@@ -181,7 +182,7 @@ func TestSqrtModN(t *testing.T) {
 func TestQuadraticModP(t *testing.T) {
 	rnd := rand.New(rand.NewSource(123))
 	for i := 0; i < 25; i++ {
-		p := getPrime(i)
+		p := primes.Get(i)
 		for a := int64(1); a < p; a++ {
 			for b := int64(0); b < p; b++ {
 				for c := int64(0); c < p; c++ {

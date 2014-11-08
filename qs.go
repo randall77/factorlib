@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/randall77/factorlib/big"
 	"github.com/randall77/factorlib/linear"
+	"github.com/randall77/factorlib/primes"
 	"math/rand"
 )
 
@@ -235,7 +236,7 @@ func makeFactorBase(n big.Int) ([]int64, int64) {
 	var fb []int64
 	s := &big.Scratch{}
 	for i := 0; ; i++ {
-		p := getPrime(i)
+		p := primes.Get(i)
 		if p > B {
 			return fb, 0
 		}

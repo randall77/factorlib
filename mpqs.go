@@ -3,6 +3,7 @@ package factorlib
 import (
 	"fmt"
 	"github.com/randall77/factorlib/big"
+	"github.com/randall77/factorlib/primes"
 	"math/rand"
 )
 
@@ -22,7 +23,7 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 
 	for i := 0; ; i++ {
 		// Pick a
-		a := getPrime(i)
+		a := primes.Get(i)
 
 		// Pick b = sqrt(n) mod a
 		b := sqrtModP(n.Mod64(a), a, rnd)

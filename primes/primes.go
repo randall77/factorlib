@@ -1,4 +1,4 @@
-package factorlib
+package primes
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 var primes = []int64{2}
 
 // getPrime(0) == 2, getPrime(1) == 3, ...
-func getPrime(i int) int64 {
+func Get(i int) int64 {
 	genPrimes(i)
 	return primes[i]
 }

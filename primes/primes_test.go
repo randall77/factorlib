@@ -1,4 +1,4 @@
-package factorlib
+package primes
 
 import (
 	"bufio"
@@ -26,8 +26,8 @@ func TestPrimes(t *testing.T) {
 		t.Errorf("want 10000 primes, got %d", len(a))
 	}
 	for i, p := range a {
-		if getPrime(i) != p {
-			t.Errorf("prime %d: want %d, got %d", i, p, getPrime(i))
+		if Get(i) != p {
+			t.Errorf("prime %d: want %d, got %d", i, p, Get(i))
 		}
 	}
 }

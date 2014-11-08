@@ -2,6 +2,7 @@ package factorlib
 
 import (
 	"github.com/randall77/factorlib/big"
+	"github.com/randall77/factorlib/primes"
 	"math/rand"
 	"testing"
 )
@@ -19,7 +20,7 @@ func TestSieve(t *testing.T) {
 	d := a.Mul(a).Sub(b.Mul(b).Sub(a.Mul(c).Lsh(2)))
 	fb := []int64{-1}
 	for i := 0; i < 100; i++ {
-		p := getPrime(i)
+		p := primes.Get(i)
 		if quadraticResidue(d.Mod64(p), p) {
 			fb = append(fb, p)
 		}

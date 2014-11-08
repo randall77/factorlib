@@ -3,6 +3,7 @@ package factorlib
 import (
 	"math/rand"
 	"github.com/randall77/factorlib/big"
+	"github.com/randall77/factorlib/primes"
 )
 
 func init() {
@@ -15,7 +16,7 @@ func init() {
 func primepower(n big.Int, rnd *rand.Rand) []big.Int {
 	// there is probably a faster way, but this is fast enough.
 	for i := 0; ; i++ {
-		p := getPrime(i)
+		p := primes.Get(i)
 		x := root(n, p)
 		if x.Cmp(big.One) <= 0 {
 			return nil

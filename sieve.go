@@ -20,34 +20,6 @@ type sieveResult struct {
 	remainder int64
 }
 
-func sieveinner(sieve []byte, si []sieveinfo2, threshold byte) []int {
-	var r []int
-	for i := 0; i < 2*sieverange; i += window {
-		// clear sieve
-		for j := 0; j < window; j++ {
-			sieve[j] = 0
-		}
-		// increment sieve entries for f(x) that are divisible
-		// by each factor base prime.
-		for j := range si {
-			f := &si[j]
-			pk := int(f.pk)
-			lg_p := f.lg_p
-			j := int(f.off)
-			for ; j < window; j += pk {
-				sieve[j] += lg_p
-			}
-			f.off = int32(j - window) // for next time
-		}
-		for j := 0; j < window; j++ {
-			if sieve[j] >= threshold {
-				r = append(r, i+j)
-			}
-		}
-	}
-	return r
-}
-
 // Find values of x for which f(x) = a x^2 + b x + c factors (within one bigprime) over the primes in fb.
 // requires: a > 0
 func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand) []sieveResult {
@@ -115,6 +87,34 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand) []sieveResult {
 		result = append(result, sieveResult{x, dup(factors), y.Int64()})
 	}
 	return result
+}
+
+func sieveinner(sieve []byte, si []sieveinfo2, threshold byte) []int {
+	var r []int
+	for i := 0; i < 2*sieverange; i += window {
+		// clear sieve
+		for j := 0; j < window; j++ {
+			sieve[j] = 0
+		}
+		// increment sieve entries for f(x) that are divisible
+		// by each factor base prime.
+		for j := range si {
+			f := &si[j]
+			pk := int(f.pk)
+			lg_p := f.lg_p
+			j := int(f.off)
+			for ; j < window; j += pk {
+				sieve[j] += lg_p
+			}
+			f.off = int32(j - window) // for next time
+		}
+		for j := 0; j < window; j++ {
+			if sieve[j] >= threshold {
+				r = append(r, i+j)
+			}
+		}
+	}
+	return r
 }
 
 type sieveinfo2 struct {
