@@ -23,9 +23,7 @@ type sieveResult struct {
 
 // Find values of x for which f(x) = a x^2 + b x + c factors (within one bigprime) over the primes in fb.
 // requires: a > 0
-func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand) []sieveResult {
-	var result []sieveResult
-
+func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand, fn func(big.Int, []uint, int64) bool) {
 	maxp := fb[len(fb)-1]
 
 	// find approximate zero crossings
@@ -84,10 +82,11 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand) []sieveResult {
 			//fmt.Printf("  false positive y=%d z=%d threshold=%d sieve[i]=%d log2(y)=%d log2(y/z)=%d\n", y, bigz, threshold, sieve[i], y.BitLen(), x.Div(y, bigz).BitLen())
 			continue
 		}
-		
-		result = append(result, sieveResult{x, dup(factors), y.Int64()})
+
+		if fn(x, dup(factors), y.Int64()) {
+			return
+		}
 	}
-	return result
 }
 
 func sieveinner(sieve []byte, si []sieveinfo2, threshold byte) []int {
@@ -167,28 +166,30 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 	// matrix is used to do gaussian elimination on mod 2 exponents.
 	m := linear.NewMatrix(uint(len(fb)))
 
-	
-	for _, r := range sievesmooth(big.Int64(1), big.Int64(0), n.Neg(), fb, rnd) {
-		fmt.Printf("%d^2-%d=%d=", r.x, n, r.x.Mul(r.x).Sub(n))
-		for i, f := range r.factors {
+	var result []big.Int
+
+	// function to process sieve results
+	fn := func(x big.Int, factors []uint, remainder int64) bool {
+		fmt.Printf("%d^2-%d=%d=", x, n, x.Mul(x).Sub(n))
+		for i, f := range factors {
 			if i != 0 {
 				fmt.Printf("·")
 			}
 			fmt.Printf("%d", fb[f])
 		}
-		if r.remainder != 1 {
-			fmt.Printf("·%d", r.remainder)
+		if remainder != 1 {
+			fmt.Printf("·%d", remainder)
 		}
 		fmt.Println()
-		if r.remainder != 1 {
+		if remainder != 1 {
 			// TODO: big factor table
-			continue
+			return false
 		}
 
-		idlist := m.AddRow(r.factors, eqn{r.x, dup(r.factors)})
+		idlist := m.AddRow(factors, eqn{x, factors})
 		if idlist == nil {
 			fmt.Println(m.Rows())
-			continue
+			return false
 		}
 		
 		// we found a set of equations with all even powers
@@ -210,27 +211,29 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 				odd[i] = false
 			}
 		}
-		for i, p := range fb {
-			if odd[i] {
-				fmt.Printf("prime i=%d p=%d\n", i, p)
+		for _, o := range odd {
+			if o {
 				panic("gauss elim failed")
 			}
 		}
 
-		fmt.Printf("a:%d b:%d n:%d\n", a, b, n)
 		if a.Cmp(b) == 0 {
 			// trivial equation, ignore it
 			fmt.Println("triv A")
-			continue
+			return false
 		}
 		if a.Add(b).Cmp(n) == 0 {
 			// trivial equation, ignore it
 			fmt.Println("triv B")
-			continue
+			return false
 		}
 		
 		r := a.Add(b).GCD(n)
-		return []big.Int{r, n.Div(r)}
+		result = []big.Int{r, n.Div(r)}
+		return true
 	}
-	return nil
+	
+	sievesmooth(big.Int64(1), big.Int64(0), n.Neg(), fb, rnd, fn)
+	
+	return result
 }
