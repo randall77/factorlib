@@ -78,6 +78,8 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 	}
 	largeprimes := map[int64]largerecord{}
 
+	s := &big.Scratch{}
+	
 	for {
 		// clear sieve
 		for i := 0; i < sievelen; i++ {
@@ -124,7 +126,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 			// accumulate factor base indexes of factors
 			factors = factors[:0]
 			for i, p := range fb {
-				for y.Mod64(p) == 0 {
+				for y.Mod64s(p, s) == 0 {
 					y = y.Div64(p)
 					factors = append(factors, uint(i))
 				}
@@ -231,12 +233,13 @@ func makeFactorBase(n big.Int) ([]int64, int64) {
 	// upper limit on prime factors (TODO: dependent on n) that we sieve with
 	const B = 50000
 	var fb []int64
+	s := &big.Scratch{}
 	for i := 0; ; i++ {
 		p := getPrime(i)
 		if p > B {
 			return fb, 0
 		}
-		a := n.Mod64(p)
+		a := n.Mod64s(p, s)
 		if a == 0 {
 			return nil, p
 		}
@@ -257,6 +260,7 @@ type sieveinfo struct {
 
 func makeSieveInfo(n big.Int, start big.Int, fb []int64, rnd *rand.Rand) []sieveinfo {
 	var si []sieveinfo
+	s := &big.Scratch{}
 
 	for _, p := range fb {
 		pk := p
@@ -264,14 +268,14 @@ func makeSieveInfo(n big.Int, start big.Int, fb []int64, rnd *rand.Rand) []sieve
 			if pk > fb[len(fb)-1] {
 				break
 			}
-			z1 := sqrtModPK(n.Mod64(pk), p, k, rnd) // find solution to x^2 == a mod p^k
+			z1 := sqrtModPK(n.Mod64s(pk, s), p, k, rnd) // find solution to x^2 == a mod p^k
 			if z1 == 0 {
 				panic("factor base divides n")
 			}
 			z2 := pk - z1
 
 			// adjust to start
-			s := start.Mod64(pk)
+			s := start.Mod64s(pk, s)
 			off1 := z1 - s
 			if off1 < 0 {
 				off1 += pk

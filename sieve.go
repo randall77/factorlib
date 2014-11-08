@@ -80,6 +80,8 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand) []sieveResult {
 	// sieve to find any potential smooth f(x)
 	sieve := make([]byte, window) // TODO: cache this?
 	res := sieveinner(sieve, si, threshold)
+
+	s := &big.Scratch{}
 	
 	// check potential results using trial factorization
 	for _, i := range res {
@@ -98,7 +100,7 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand) []sieveResult {
 				}
 				continue
 			}
-			for y.Mod64(p) == 0 {
+			for y.Mod64s(p, s) == 0 {
 				y = y.Div64(p)
 				factors = append(factors, uint(k))
 			}
@@ -123,6 +125,7 @@ type sieveinfo2 struct {
 
 func makeSieveInfo2(a, b, c big.Int, start big.Int, fb []int64, rnd *rand.Rand) []sieveinfo2 {
 	var si []sieveinfo2
+	s := &big.Scratch{}
 
 	for _, p := range fb[1:] {
 		pk := p
@@ -132,10 +135,10 @@ func makeSieveInfo2(a, b, c big.Int, start big.Int, fb []int64, rnd *rand.Rand) 
 				// smaller than than the maximum factor base prime.
 				break
 			}
-			s := start.Mod64(pk)
-			for _, r := range quadraticModP(a.Mod64(pk), b.Mod64(pk), c.Mod64(pk), pk, rnd) {
+			st := start.Mod64s(pk, s)
+			for _, r := range quadraticModP(a.Mod64s(pk, s), b.Mod64s(pk, s), c.Mod64s(pk, s), pk, rnd) {
 				// find first pk*i+r which is >= start
-				off := (r - s + pk) % pk
+				off := (r - st + pk) % pk
 				si = append(si, sieveinfo2{int32(pk), log2(p), int32(off)})
 			}
 			pk *= p

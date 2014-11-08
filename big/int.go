@@ -203,6 +203,17 @@ func (x Int) Rand(rnd *rand.Rand) Int {
 	return Int{new(big.Int).Rand(rnd, x.v)}
 }
 
+// Optimized routines
+
+// Scratch space that some of the routines can use.
+// Allocate one using &Scratch{} and then pass it to
+// any of the *64s routines.
+type Scratch [2]big.Int
+
+func (x Int) Mod64s(y int64, s *Scratch) int64 {
+	return s[1].Mod(x.v, s[0].SetInt64(y)).Int64()
+}
+
 // helpful constants
 var Zero = Int64(0)
 var One = Int64(1)
