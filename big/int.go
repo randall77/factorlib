@@ -15,11 +15,8 @@ type Int struct {
 	v *big.Int
 }
 
-func Big(x int64) Int {
+func Int64(x int64) Int {
 	return Int{big.NewInt(x)}
-}
-func BigFromBig(x *big.Int) Int {
-	return Int{new(big.Int).Set(x)}
 }
 
 func (x Int) Add(y Int) Int {
@@ -137,7 +134,7 @@ func (x Int) Sign() int {
 func (x Int) Cmp(y Int) int {
 	return x.v.Cmp(y.v)
 }
-var minInt64 = Big(math.MinInt64)
+var minInt64 = Int64(math.MinInt64)
 func (x Int) Cmp64(y int64) int {
 	if x.BitLen() >= 64 {
 		if x.Sign() > 0 {
@@ -170,10 +167,6 @@ func (x Int) Format(s fmt.State, ch rune) {
 	x.v.Format(s, ch)
 }
 
-func (x Int) GetBig() *big.Int {
-	return new(big.Int).Set(x.v)
-}
-
 func (x Int) Int64() int64 {
 	return x.v.Int64()
 }
@@ -190,7 +183,7 @@ func ParseInt(s string) (Int, bool) {
 }
 
 // helpful constants
-var Zero = Big(0)
-var One = Big(1)
-var Two = Big(2)
-var Ten = Big(10)
+var Zero = Int64(0)
+var One = Int64(1)
+var Two = Int64(2)
+var Ten = Int64(10)

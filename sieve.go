@@ -157,10 +157,10 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 	// first, pick a factor base
 	fb, a := makeFactorBase(n)
 	if a != 0 {
-		return []big.Int{big.Big(a), n.Div64(a)}
+		return []big.Int{big.Int64(a), n.Div64(a)}
 	}
 
-	for _, r := range sievesmooth(big.Big(1), big.Big(0), n.Neg(), fb, rnd) {
+	for _, r := range sievesmooth(big.Int64(1), big.Int64(0), n.Neg(), fb, rnd) {
 		fmt.Printf("f(%d)= prod %v * %d\n", r.x, r.factors, r.remainder)
 	}
 	return nil

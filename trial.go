@@ -14,7 +14,7 @@ func trial(n big.Int, rnd *rand.Rand) []big.Int {
 	for i := 0; ; i++ {
 		p := getPrime(i)
 		if n.Mod64(p) == 0 {
-			v := [2]big.Int{big.Big(p), n.Div64(p)}
+			v := [2]big.Int{big.Int64(p), n.Div64(p)}
 			return v[:]
 		}
 	}

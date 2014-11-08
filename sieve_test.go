@@ -7,9 +7,9 @@ import (
 )
 
 func TestSieve(t *testing.T) {
-	a := big.Big(23)
-	b := big.Big(-9813)
-	c := big.Big(1011)
+	a := big.Int64(23)
+	b := big.Int64(-9813)
+	c := big.Int64(1011)
 
 	rnd := rand.New(rand.NewSource(123))
 

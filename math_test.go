@@ -8,7 +8,7 @@ import (
 
 func TestLog(t *testing.T) {
 	for n := int64(0); n <= 65536; n++ {
-		s := uint8(big.Big(n).BitLen())
+		s := uint8(big.Int64(n).BitLen())
 		r := log2(n)
 		if r != s {
 			t.Errorf("n=%d want %d, got %d", n, s, r)
