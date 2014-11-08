@@ -162,9 +162,9 @@ func (x Int) SqrtFloor() Int {
 			return lo
 		}
 		if m.Square().Cmp(x) <= 0 {
-			lo, m = m, lo
+			lo = m
 		} else {
-			hi, m = m, hi
+			hi = m
 		}
 	}
 }
@@ -205,13 +205,12 @@ func (x Int) Rand(rnd *rand.Rand) Int {
 
 // Optimized routines
 
-// Scratch space that some of the routines can use.
-// Allocate one using &Scratch{} and then pass it to
-// any of the *64s routines.
+// Scratch space for use by Mod64s.  Mod64s is the same
+// as Mod64 except it uses the scratch space to avoid allocation.
 type Scratch [2]big.Int
 
 func (x Int) Mod64s(y int64, s *Scratch) int64 {
-	return s[1].Mod(x.v, s[0].SetInt64(y)).Int64()
+	return s[0].Mod(x.v, s[1].SetInt64(y)).Int64()
 }
 
 // helpful constants
