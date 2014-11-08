@@ -26,22 +26,25 @@ func TestSieve(t *testing.T) {
 		}
 	}
 
-	results := sievesmooth(a, b, c, fb, rnd)
-
-	if len(results) == 0 {
-		t.Errorf("no results for a=%d b=%d c=%d", a, b, c)
-	}
-
-	for _, r := range results {
-		x := r.x
+	cnt := 0
+	
+	fn := func(x big.Int, factors []uint, remainder int64) bool {
 		y := a.Mul(x).Add(b).Mul(x).Add(c)
 		z := big.One
-		for _, f := range r.factors {
+		for _, f := range factors {
 			z = z.Mul64(fb[f])
 		}
-		z = z.Mul64(r.remainder)
+		z = z.Mul64(remainder)
 		if z.Cmp(y) != 0 {
-			t.Errorf("bad sieve result %v z=%d, want %d", r, z, y)
+			t.Errorf("bad sieve result z=%d, want %d", z, y)
 		}
+		cnt++
+		return false
+	}
+	
+	sievesmooth(a, b, c, fb, rnd, fn)
+
+	if cnt == 0 {
+		t.Errorf("no results for a=%d b=%d c=%d", a, b, c)
 	}
 }
