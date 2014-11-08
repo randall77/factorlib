@@ -268,9 +268,9 @@ func quadraticModP(a, b, c, p int64, rnd *rand.Rand) []int64 {
 	return r
 }
 
-// solve ax^2+bx+c==0 mod p
-//   0 <= a,b,c < p
-//   a != 0
+// solve ax^2+bx+c==0 mod p^k
+//   0 <= a,b,c < p^k
+//   gcd(a,p) == 1
 //   pk == p^k
 func quadraticModPK(a, b, c, p int64, k uint, pk int64, rnd *rand.Rand) []int64 {
 	if p == 2 {
