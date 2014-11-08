@@ -1,9 +1,9 @@
 package factorlib
 
 import (
-	"math/rand"
 	"github.com/randall77/factorlib/big"
 	"github.com/randall77/factorlib/primes"
+	"math/rand"
 )
 
 func init() {
@@ -33,7 +33,7 @@ func primepower(n big.Int, rnd *rand.Rand) []big.Int {
 
 // computes floor(n^(1/k))
 func root(n big.Int, k int64) big.Int {
-	lo := big.One.Lsh(uint((int64(n.BitLen())-1)/k))
+	lo := big.One.Lsh(uint((int64(n.BitLen()) - 1) / k))
 	hi := lo.Lsh(1)
 	if lo.Exp(k).Cmp(n) > 0 {
 		panic("low too high")

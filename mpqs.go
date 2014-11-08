@@ -29,6 +29,5 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 		b := sqrtModP(n.Mod64(a), a, rnd)
 		_ = b
 
-		
 	}
 }

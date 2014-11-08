@@ -154,7 +154,7 @@ func (x Int) SqrtFloor() Int {
 	b := uint(x.BitLen())
 
 	// invariant lo <= sqrt(x) < hi
-	lo := One.Lsh((b-1)/2)
+	lo := One.Lsh((b - 1) / 2)
 	hi := lo.Lsh(1)
 	for {
 		m := lo.Add(hi).Rsh(1)

@@ -2,9 +2,9 @@ package factorlib
 
 import (
 	"fmt"
+	"github.com/randall77/factorlib/big"
 	"math/rand"
 	"sort"
-	"github.com/randall77/factorlib/big"
 )
 
 // Set of factoring algorithms to choose from.

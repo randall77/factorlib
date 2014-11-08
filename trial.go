@@ -1,9 +1,9 @@
 package factorlib
 
 import (
-	"math/rand"
 	"github.com/randall77/factorlib/big"
 	"github.com/randall77/factorlib/primes"
+	"math/rand"
 )
 
 func init() {

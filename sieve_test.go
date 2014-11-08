@@ -27,11 +27,11 @@ func TestSieve(t *testing.T) {
 	}
 
 	results := sievesmooth(a, b, c, fb, rnd)
-	
+
 	if len(results) == 0 {
 		t.Errorf("no results for a=%d b=%d c=%d", a, b, c)
 	}
-	
+
 	for _, r := range results {
 		x := r.x
 		y := a.Mul(x).Add(b).Mul(x).Add(c)

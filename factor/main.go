@@ -38,7 +38,7 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		k := big.Ten.Exp(int64(d)-1)
+		k := big.Ten.Exp(int64(d) - 1)
 		n = k.Mul64(9).Rand(rnd).Add(k)
 	case 's':
 		// random d-digit semiprime
@@ -51,7 +51,7 @@ func main() {
 			fmt.Println("semiprime must have an even number of digits")
 			os.Exit(1)
 		}
-		min := big.Ten.Exp(int64(d)-1)
+		min := big.Ten.Exp(int64(d) - 1)
 		max := min.Mul64(10)
 		for {
 			x := randomPrime(d/2, rnd)
@@ -91,7 +91,7 @@ func main() {
 
 // make a random prime with the given number of digits
 func randomPrime(digits int, rnd *rand.Rand) big.Int {
-	min := big.Ten.Exp(int64(digits-1))
+	min := big.Ten.Exp(int64(digits - 1))
 	w := min.Mul64(9)
 	for {
 		n := min.Add(w.Rand(rnd))

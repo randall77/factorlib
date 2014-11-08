@@ -47,19 +47,19 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand, fn func(big.Int, [
 
 	// pick threshold
 	threshold := byte(a.Mul(x0).Add(b).Mul(x0).Add(c).BitLen()) - 2*log2(maxp) // TODO: subtract more?
-	
+
 	// sieve to find any potential smooth f(x)
 	sieve := make([]byte, window) // TODO: cache this?
 	res := sieveinner(sieve, si, threshold)
 
 	s := &big.Scratch{}
-	
+
 	// check potential results using trial factorization
 	for _, i := range res {
 		// compute y=f(x)
 		x := x0.Add64(int64(i))
 		y := a.Mul(x).Add(b).Mul(x).Add(c)
-		
+
 		// trial divide y by the factor base
 		// accumulate factor base indexes of factors
 		factors = factors[:0]
@@ -76,7 +76,7 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand, fn func(big.Int, [
 				factors = append(factors, uint(k))
 			}
 		}
-		
+
 		// if remainder > B^2, it's too big, might not be prime.
 		if y.Cmp64(maxp*maxp) > 0 {
 			//fmt.Printf("  false positive y=%d z=%d threshold=%d sieve[i]=%d log2(y)=%d log2(y/z)=%d\n", y, bigz, threshold, sieve[i], y.BitLen(), x.Div(y, bigz).BitLen())
@@ -89,6 +89,7 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand, fn func(big.Int, [
 	}
 }
 
+// TODO: write this in assembly?
 func sieveinner(sieve []byte, si []sieveinfo2, threshold byte) []int {
 	var r []int
 	for i := 0; i < 2*sieverange; i += window {
@@ -172,7 +173,7 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 		f []uint
 	}
 	largeprimes := map[int64]largerecord{}
-	
+
 	var result []big.Int
 
 	// function to process sieve results
@@ -201,7 +202,7 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 			// x1^2 === prod(f1) * largeprime
 			// x2^2 === prod(f2) * largeprime
 			fmt.Printf("  largeprime %d match\n", remainder)
-			x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could y divide n?
+			x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could remainder divide n?
 			factors = append(factors, lr.f...)
 		}
 
@@ -210,7 +211,7 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 			fmt.Println(m.Rows())
 			return false
 		}
-		
+
 		// we found a set of equations with all even powers
 		// compute a and b where a^2 === b^2 mod n
 		a := big.One
@@ -246,15 +247,15 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 			fmt.Println("triv B")
 			return false
 		}
-		
+
 		r := a.Add(b).GCD(n)
 		result = []big.Int{r, n.Div(r)}
 		return true
 	}
-	
+
 	sievesmooth(big.Int64(1), big.Int64(0), n.Neg(), fb, rnd, fn)
 
 	// TODO: after sieving done, restart with larger interval?
-	
+
 	return result
 }

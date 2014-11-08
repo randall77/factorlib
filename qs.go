@@ -81,7 +81,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 	largeprimes := map[int64]largerecord{}
 
 	s := &big.Scratch{}
-	
+
 	for {
 		// clear sieve
 		for i := 0; i < sievelen; i++ {
