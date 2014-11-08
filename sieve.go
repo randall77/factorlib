@@ -166,6 +166,13 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 	// matrix is used to do gaussian elimination on mod 2 exponents.
 	m := linear.NewMatrix(uint(len(fb)))
 
+	// pair up large primes that we find
+	type largerecord struct {
+		x big.Int
+		f []uint
+	}
+	largeprimes := map[int64]largerecord{}
+	
 	var result []big.Int
 
 	// function to process sieve results
@@ -181,9 +188,21 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 			fmt.Printf("·%d", remainder)
 		}
 		fmt.Println()
+
 		if remainder != 1 {
-			// TODO: big factor table
-			return false
+			// try to find another record with the same largeprime
+			lr, ok := largeprimes[remainder]
+			if !ok {
+				// haven't seen this large prime yet.  Save record for later
+				largeprimes[remainder] = largerecord{x, factors}
+				return false
+			}
+			// combine current equation with other largeprime equation
+			// x1^2 === prod(f1) * largeprime
+			// x2^2 === prod(f2) * largeprime
+			fmt.Printf("  largeprime %d match\n", remainder)
+			x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could y divide n?
+			factors = append(factors, lr.f...)
 		}
 
 		idlist := m.AddRow(factors, eqn{x, factors})
@@ -234,6 +253,8 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 	}
 	
 	sievesmooth(big.Int64(1), big.Int64(0), n.Neg(), fb, rnd, fn)
+
+	// TODO: after sieving done, restart with larger interval?
 	
 	return result
 }
