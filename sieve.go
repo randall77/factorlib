@@ -27,11 +27,7 @@ type sieveResult struct {
 	remainder int64
 }
 
-// Find values of x for which f(x) = a x^2 + b x + c factors (within one bigprime) over the primes in fb.
-// requires: a > 0
 func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand, fn func(big.Int, []uint, int64) bool) {
-	maxp := fb[len(fb)-1]
-
 	// find approximate zero crossings
 	d := b.Square().Sub(a.Mul(c).Lsh(2))
 	if d.Sign() < 0 {
@@ -42,17 +38,23 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand, fn func(big.Int, [
 	//x2 := b.Neg().Sub(d).Div(a).Rsh(1)
 	// TODO: sieve around x2 also? (if d != 0)
 
-	// starting point
-	x0 := x.Sub64(sieverange)
+	sievesmooth2(a, b, c, fb, rnd, x.Sub64(sieverange), fn)
+}
+
+// Find values of x for which f(x) = a x^2 + b x + c factors (within one bigprime) over the primes in fb.
+// requires: a > 0
+func sievesmooth2(a, b, c big.Int, fb []int64, rnd *rand.Rand, start big.Int, fn func(big.Int, []uint, int64) bool) {
+	maxp := fb[len(fb)-1]
 
 	// results buffer
 	var factors []uint
 
 	// find starting points
-	si := makeSieveInfo2(a, b, c, x0, fb, rnd)
+	si := makeSieveInfo2(a, b, c, start, fb, rnd)
 
 	// pick threshold
-	threshold := byte(a.Mul(x0).Add(b).Mul(x0).Add(c).BitLen()) - 2*log2(maxp) // TODO: subtract more?
+	// TODO: sample a few locations in the range.  Just first and last?
+	threshold := byte(a.Mul(start).Add(b).Mul(start).Add(c).BitLen()) - 2*log2(maxp) // TODO: subtract more?
 
 	// sieve to find any potential smooth f(x)
 	sieve := make([]byte, window) // TODO: cache this?
@@ -63,7 +65,7 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand, fn func(big.Int, [
 	// check potential results using trial factorization
 	for _, i := range res {
 		// compute y=f(x)
-		x := x0.Add64(int64(i))
+		x := start.Add64(int64(i))
 		y := a.Mul(x).Add(b).Mul(x).Add(c)
 
 		// trial divide y by the factor base
@@ -109,7 +111,7 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand, fn func(big.Int, [
 					continue checkloop
 				}
 			}
-			x := x0.Add64(int64(i))
+			x := start.Add64(int64(i))
 			y := a.Mul(x).Add(b).Mul(x).Add(c)
 			var f []int64
 			for _, p := range fb {
@@ -223,6 +225,7 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 
 	// function to process sieve results
 	fn := func(x big.Int, factors []uint, remainder int64) bool {
+		/*
 		fmt.Printf("%d^2-%d=%d=", x, n, x.Mul(x).Sub(n))
 		for i, f := range factors {
 			if i != 0 {
@@ -234,7 +237,7 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 			fmt.Printf("·%d", remainder)
 		}
 		fmt.Println()
-
+		*/
 		if remainder != 1 {
 			// try to find another record with the same largeprime
 			lr, ok := largeprimes[remainder]
@@ -298,9 +301,13 @@ func qs2(n big.Int, rnd *rand.Rand) []big.Int {
 		return true
 	}
 
-	sievesmooth(big.Int64(1), big.Int64(0), n.Neg(), fb, rnd, fn)
-
-	// TODO: after sieving done, restart with larger interval?
-
-	return result
+	x0 := n.SqrtCeil()
+	for {
+		fmt.Printf("sieving at %d\n", x0)
+		sievesmooth2(big.Int64(1), big.Int64(0), n.Neg(), fb, rnd, x0, fn)
+		if result != nil {
+			return result
+		}
+		x0 = x0.Add64(2*sieverange)
+	}
 }
