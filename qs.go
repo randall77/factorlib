@@ -69,7 +69,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 		idlist := m.AddRow(factors, eqn{x, factors})
 		if idlist == nil {
 			if m.Rows() % 100 == 0 {
-				fmt.Println(m.Rows())
+				fmt.Printf("%d/%d\n", m.Rows(), len(fb))
 			}
 			return nil
 		}

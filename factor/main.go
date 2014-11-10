@@ -5,17 +5,29 @@ import (
 	"fmt"
 	"github.com/randall77/factorlib"
 	"github.com/randall77/factorlib/big"
+	"log"
 	"math/rand"
 	"os"
+	"runtime/pprof"
 	"strconv"
 )
 
 var seed = flag.Int64("seed", 0, "seed for RNG")
 var alg = flag.String("alg", "trial", "factoring algorithm to use")
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
 func main() {
 	flag.Parse()
-
+	
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+	
 	rnd := rand.New(rand.NewSource(*seed))
 
 	// Figure out the number to factor
