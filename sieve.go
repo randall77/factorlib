@@ -13,6 +13,12 @@ const sieverange = 1 << 14
 // use an array of this size to do the sieving
 const window = 1 << 9
 
+// check to see if anything returned from the sieve isn't actually usable
+const checkFalsePositive = false
+
+// check to see if anything usable isn't returned by the sieve
+const checkFalseNegative = false
+
 // Records f(x) == product(factors)*remainder
 // The values in factors are indexes into the factor base
 type sieveResult struct {
@@ -79,12 +85,51 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand, fn func(big.Int, [
 
 		// if remainder > B^2, it's too big, might not be prime.
 		if y.Cmp64(maxp*maxp) > 0 {
-			//fmt.Printf("  false positive y=%d z=%d threshold=%d sieve[i]=%d log2(y)=%d log2(y/z)=%d\n", y, bigz, threshold, sieve[i], y.BitLen(), x.Div(y, bigz).BitLen())
+			if checkFalsePositive {
+				var f []int64
+				for _, j := range factors {
+					f = append(f, fb[j])
+				}
+				fmt.Printf("  false positive x=%d f(x)=%d f=%v·%d\n", x, a.Mul(x).Add(b).Mul(x).Add(c), f, y)
+			}
 			continue
 		}
 
 		if fn(x, dup(factors), y.Int64()) {
 			return
+		}
+	}
+	if checkFalseNegative {
+		// This is expensive, we have to trial divide all the numbers in the
+		// sieve range.  Oh well, testing.
+	checkloop:
+		for i := 0; i < 2*sieverange; i++ {
+			for _, r := range res {
+				if r == i {
+					continue checkloop
+				}
+			}
+			x := x0.Add64(int64(i))
+			y := a.Mul(x).Add(b).Mul(x).Add(c)
+			var f []int64
+			for _, p := range fb {
+				if p == -1 {
+					if y.Sign() < 0 {
+						y = y.Neg()
+						f = append(f, p)
+					}
+					continue
+				}
+				for y.Mod64s(p, s) == 0 {
+					y = y.Div64(p)
+					f = append(f, p)
+				}
+			}
+			
+			// if remainder <= B^2, leftover is a prime
+			if y.Cmp64(maxp*maxp) <= 0 {
+				fmt.Printf("  false negative x=%d f(x)=%d f=%v·%d\n", x, a.Mul(x).Add(b).Mul(x).Add(c), f, y)
+			}
 		}
 	}
 }
