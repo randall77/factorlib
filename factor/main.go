@@ -33,12 +33,10 @@ func main() {
 	// Figure out the number to factor
 	args := flag.Args()
 	if len(args) == 0 {
-		fmt.Println("no number to factor")
-		os.Exit(1)
+		log.Fatal("no number to factor")
 	}
 	if len(args) > 1 {
-		fmt.Println("can't factor multiple numbers")
-		os.Exit(1)
+		log.Fatal("can't factor multiple numbers")
 	}
 	var n big.Int
 	nstr := args[0]
@@ -47,8 +45,7 @@ func main() {
 		// random d-digit number
 		d, err := strconv.Atoi(nstr[1:])
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 		k := big.Ten.Exp(int64(d) - 1)
 		n = k.Mul64(9).Rand(rnd).Add(k)
@@ -56,12 +53,10 @@ func main() {
 		// random d-digit semiprime
 		d, err := strconv.Atoi(nstr[1:])
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 		if d%2 != 0 {
-			fmt.Println("semiprime must have an even number of digits")
-			os.Exit(1)
+			log.Fatal("semiprime must have an even number of digits")
 		}
 		min := big.Ten.Exp(int64(d) - 1)
 		max := min.Mul64(10)
@@ -77,17 +72,15 @@ func main() {
 		var ok bool
 		n, ok = big.ParseInt(nstr)
 		if !ok {
-			fmt.Printf("parsing \"%s\": invalid number\n", nstr)
-			os.Exit(1)
+			log.Fatalf("parsing \"%s\": invalid number\n", nstr)
 		}
 		if n.Cmp(big.One) <= 0 {
-			fmt.Printf("invalid n: %s\n", nstr)
-			os.Exit(1)
+			log.Fatalf("invalid n: %s\n", nstr)
 		}
 	}
 
 	// Call into main library to do factoring
-	fmt.Printf("factoring %d using algorithm %s\n", n, *alg)
+	log.Printf("factoring %d using algorithm %s\n", n, *alg)
 	factors := factorlib.Factor(n, *alg, rnd)
 
 	// Print result
