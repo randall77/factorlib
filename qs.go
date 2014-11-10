@@ -1,10 +1,10 @@
 package factorlib
 
 import (
-	"fmt"
 	"github.com/randall77/factorlib/big"
 	"github.com/randall77/factorlib/linear"
 	"github.com/randall77/factorlib/primes"
+	"log"
 	"math/rand"
 )
 
@@ -69,7 +69,8 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 		idlist := m.AddRow(factors, eqn{x, factors})
 		if idlist == nil {
 			if m.Rows() % 100 == 0 {
-				fmt.Printf("%d/%d\n", m.Rows(), len(fb))
+				log.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), falsepos, len(largeprimes))
+				falsepos = 0
 			}
 			return nil
 		}
@@ -101,12 +102,12 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 
 		if a.Cmp(b) == 0 {
 			// trivial equation, ignore it
-			fmt.Println("triv A")
+			log.Println("triv A")
 			return nil
 		}
 		if a.Add(b).Cmp(n) == 0 {
 			// trivial equation, ignore it
-			fmt.Println("triv B")
+			log.Println("triv B")
 			return nil
 		}
 
@@ -116,12 +117,12 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 
 	x0 := n.SqrtCeil()
 	for {
-		fmt.Printf("sieving at %d\n", x0)
+		log.Printf("sieving at %d\n", x0)
 		r := sievesmooth2(big.Int64(1), big.Int64(0), n.Neg(), fb, rnd, x0, fn)
 		if r != nil {
 			return r
 		}
-		x0 = x0.Add64(2*sieverange)
+		x0 = x0.Add64(sieverange)
 	}
 }
 

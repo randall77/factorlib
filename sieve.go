@@ -7,16 +7,19 @@ import (
 )
 
 // sieve [-sieverange,sieverange) around mininum point.
-const sieverange = 1 << 14
+const sieverange = 1 << 20
 
 // use an array of this size to do the sieving
-const window = 1 << 9
+const window = 1 << 14
 
 // check to see if anything returned from the sieve isn't actually usable
 const checkFalsePositive = false
 
 // check to see if anything usable isn't returned by the sieve
 const checkFalseNegative = false
+
+// TODO: do this more systematically
+var falsepos int
 
 // Records f(x) == product(factors)*remainder
 // The values in factors are indexes into the factor base
@@ -37,7 +40,7 @@ func sievesmooth(a, b, c big.Int, fb []int64, rnd *rand.Rand, fn func(big.Int, [
 	//x2 := b.Neg().Sub(d).Div(a).Rsh(1)
 	// TODO: sieve around x2 also? (if d != 0)
 
-	return sievesmooth2(a, b, c, fb, rnd, x.Sub64(sieverange), fn)
+	return sievesmooth2(a, b, c, fb, rnd, x.Sub64(sieverange/2), fn)
 }
 
 // Find values of x for which f(x) = a x^2 + b x + c factors (within one bigprime) over the primes in fb.
@@ -53,11 +56,16 @@ func sievesmooth2(a, b, c big.Int, fb []int64, rnd *rand.Rand, start big.Int, fn
 
 	// pick threshold
 	// TODO: sample a few locations in the range.  Just first and last?
-	threshold := byte(a.Mul(start).Add(b).Mul(start).Add(c).BitLen()) - 2*log2(maxp) // TODO: subtract more?
+	var thresholds [sieverange/window]byte
+	for i := 0; i < sieverange; i+= window {
+		x := start.Add64(int64(i))
+		y := a.Mul(x).Add(b).Mul(x).Add(c)
+		thresholds[i/window] = byte(y.BitLen()) - 2*log2(maxp) // TODO: subtract more?
+	}
 
 	// sieve to find any potential smooth f(x)
 	sieve := make([]byte, window) // TODO: cache this?
-	res := sieveinner(sieve, si, threshold)
+	res := sieveinner(sieve, si, thresholds[:])
 
 	s := &big.Scratch{}
 
@@ -93,6 +101,7 @@ func sievesmooth2(a, b, c big.Int, fb []int64, rnd *rand.Rand, start big.Int, fn
 				}
 				fmt.Printf("  false positive x=%d f(x)=%d f=%v·%d\n", x, a.Mul(x).Add(b).Mul(x).Add(c), f, y)
 			}
+			falsepos++
 			continue
 		}
 
@@ -104,7 +113,7 @@ func sievesmooth2(a, b, c big.Int, fb []int64, rnd *rand.Rand, start big.Int, fn
 		// This is expensive, we have to trial divide all the numbers in the
 		// sieve range.  Oh well, testing.
 	checkloop:
-		for i := 0; i < 2*sieverange; i++ {
+		for i := 0; i < sieverange; i++ {
 			for _, r := range res {
 				if r == i {
 					continue checkloop
@@ -137,13 +146,14 @@ func sievesmooth2(a, b, c big.Int, fb []int64, rnd *rand.Rand, start big.Int, fn
 }
 
 // TODO: write this in assembly?
-func sieveinner(sieve []byte, si []sieveinfo2, threshold byte) []int {
+func sieveinner(sieve []byte, si []sieveinfo2, thresholds []byte) []int {
 	var r []int
-	for i := 0; i < 2*sieverange; i += window {
+	for i := 0; i < sieverange; i += window {
 		// clear sieve
 		for j := 0; j < window; j++ {
 			sieve[j] = 0
 		}
+		threshold := thresholds[i/window]
 		// increment sieve entries for f(x) that are divisible
 		// by each factor base prime.
 		for j := range si {
