@@ -226,7 +226,7 @@ func sqrtModN(a int64, n []primePower, rnd *rand.Rand) int64 {
 
 		// add it in to total result
 		M := N / pk
-		r += M * x * modInv(M%pk, pk)
+		r += M * x * modInv(M%pk, pk) // TODO: check for overflow
 		r %= N
 	}
 	// check result
