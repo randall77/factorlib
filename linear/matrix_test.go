@@ -1,6 +1,7 @@
 package linear
 
 import (
+	"math/rand"
 	"sort"
 	"testing"
 )
@@ -50,5 +51,24 @@ func TestMatrix(t *testing.T) {
 	}
 	if idlist[0].(string) != "A" {
 		t.Fatalf("trivial row did not return its id")
+	}
+}
+
+func BenchmarkMatrix100(b *testing.B) { benchmarkMatrix(b, 100) }
+func BenchmarkMatrix1000(b *testing.B) { benchmarkMatrix(b, 1000) }
+func BenchmarkMatrix10000(b *testing.B) { benchmarkMatrix(b, 10000) }
+
+func benchmarkMatrix(b *testing.B, n uint) {
+	b.ReportAllocs()
+	rnd := rand.New(rand.NewSource(0))
+	var row [10]uint
+	for i := 0; i < b.N; i++ {
+		m := NewMatrix(n)
+		for r := 0; r < int(n); r++ {
+			for j := range row {
+				row[j] = uint(rnd.Intn(int(n)))
+			}
+			m.AddRow(row[:], r)
+		}
 	}
 }

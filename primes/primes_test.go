@@ -31,3 +31,12 @@ func TestPrimes(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkPrimes(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		primes = []int64{2}
+		sieved = 0
+		Get(1000000)
+	}
+}

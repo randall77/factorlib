@@ -59,9 +59,9 @@ func TestXor(t *testing.T) {
 			want := false
 			if i%3 == 0 || i%5 == 0 {
 				want = true
-			}
-			if i%15 == 0 {
-				want = false
+				if i%15 == 0 {
+					want = false
+				}
 			}
 			if x.getBit(i) != want {
 				t.Errorf("bad xor size=%d bit=%d, want %t", size, i, want)
