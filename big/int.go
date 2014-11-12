@@ -207,10 +207,14 @@ func (x Int) Rand(rnd *rand.Rand) Int {
 
 // Scratch space for use by Mod64s.  Mod64s is the same
 // as Mod64 except it uses the scratch space to avoid allocation.
-type Scratch [2]big.Int
+type Scratch [3]big.Int
 
 func (x Int) Mod64s(y int64, s *Scratch) int64 {
-	return s[0].Mod(x.v, s[1].SetInt64(y)).Int64()
+	// Note: use DivMod here instead of Mod so we can reuse
+	// storage for the dividend.  Mod allocates storage for
+	// the (thrown away) dividend on each call.
+	s[0].DivMod(x.v, s[1].SetInt64(y), &s[2])
+	return s[2].Int64()
 }
 
 // helpful constants
