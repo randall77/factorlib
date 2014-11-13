@@ -59,7 +59,7 @@ func (p point) Add(q point, n, a big.Int) point {
 	}
 	s := num.Mul(denom.Mod(n).ModInv(n)).Mod(n)
 	rx := s.Square().Sub(p.x).Sub(q.x).Mod(n)
-	ry := s.Mul(rx.Sub(p.x)).Add(p.y).Neg().Mod(n)
+	ry := s.Mul(p.x.Sub(rx)).Sub(p.y).Mod(n)
 	return point{false, rx, ry}
 }
 
