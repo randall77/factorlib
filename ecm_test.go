@@ -14,10 +14,10 @@ func TestElliptic(t *testing.T) {
 	A := big.Int64(a)
 
 	// find all the points on the curve
-	onCurve := []point{{true, big.Int{}, big.Int{}}}
+	onCurve := []point{{big.Zero, big.Zero}}
 	for x := 0; x < n; x++ {
 		for y := 0; y < n; y++ {
-			p := point{false, big.Int64(int64(x)), big.Int64(int64(y))}
+			p := point{big.Int64(int64(x)), big.Int64(int64(y))}
 			if p.Check(N, A) {
 				onCurve = append(onCurve, p)
 			}
@@ -34,7 +34,7 @@ func TestElliptic(t *testing.T) {
 					continue testloop
 				}
 			}
-			t.Fatalf("(%t %d %d)+(%t %d %d)=(%t %d %d) not on curve", p.inf, p.x, p.y, q.inf, q.x, q.y, r.inf, r.x, r.y)
+			t.Fatalf("(%d %d)+(%d %d)=(%d %d) not on curve", p.x, p.y, q.x, q.y, r.x, r.y)
 		}
 	}
 }

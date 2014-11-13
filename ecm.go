@@ -12,38 +12,34 @@ func init() {
 
 // we use the elliptic curve y^2 = x^3 + ax + 1 for a random a in Z_n
 type point struct {
-	inf  bool // the point at infinity, aka the zero element of the field
 	x, y big.Int
 }
 
+func (p point) Inf() bool {
+	// since x==y==0 is never a solution to the elliptic curve, we
+	// reserve that bit pattern for encoding infinity.
+	return p.x.IsZero() && p.y.IsZero()
+}
+
 func (p point) Check(n, a big.Int) bool {
-	if p.inf {
+	if p.Inf() {
 		return true
 	}
 	lhs := p.y.Square()
 	rhs := p.x.Square().Add(a).Mul(p.x).Add(big.One)
-	if lhs.Mod(n).Cmp(rhs.Mod(n)) != 0 {
-		return false
-	}
-	return true
+	return lhs.Sub(rhs).Mod(n).IsZero()
 }
 
 func (p point) Equals(q point) bool {
-	if p.inf {
-		return q.inf
-	}
-	if q.inf {
-		return false
-	}
 	return p.x.Equals(q.x) && p.y.Equals(q.y)
 }
 
 func (p point) Add(q point, n, a big.Int) point {
 	//log.Printf("add (%t %d %d) (%t %d %d)", p.inf, p.x, p.y, q.inf, q.x, q.y)
-	if p.inf {
+	if p.Inf() {
 		return q
 	}
-	if q.inf {
+	if q.Inf() {
 		return p
 	}
 	var num, denom big.Int
@@ -55,7 +51,7 @@ func (p point) Add(q point, n, a big.Int) point {
 		num = p.x.Square().Mul(big.Three).Add(a)
 		denom = p.y.Lsh(1)
 	} else {
-		return point{true, big.Int{}, big.Int{}}
+		return point{big.Zero, big.Zero}
 	}
 	denom = denom.Mod(n)
 	f := denom.GCD(n)
@@ -65,12 +61,12 @@ func (p point) Add(q point, n, a big.Int) point {
 	s := num.Mul(denom.Mod(n).ModInv(n)).Mod(n)
 	rx := s.Square().Sub(p.x).Sub(q.x).Mod(n)
 	ry := s.Mul(p.x.Sub(rx)).Sub(p.y).Mod(n)
-	return point{false, rx, ry}
+	return point{rx, ry}
 }
 
 func (p point) Mul(k int64, n, a big.Int) point {
 	// compute q=kp by repeated doubling
-	q := point{true, big.Int{}, big.Int{}}
+	q := point{big.Zero, big.Zero}
 	for ; k > 1; k >>= 1 {
 		if k&1 != 0 {
 			q = q.Add(p, n, a)
@@ -100,10 +96,10 @@ func ecm(n big.Int, rnd *rand.Rand) (r []big.Int) {
 			continue
 		}
 
-		p := point{false, big.Zero, big.One}
+		p := point{big.Zero, big.One}
 		for i := 0; ; i++ {
 			p = p.Mul(primes.Get(i), n, a)
-			if p.inf {
+			if p.Inf() {
 				// this curve didn't work
 				break
 			}
