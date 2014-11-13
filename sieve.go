@@ -56,8 +56,8 @@ func sievesmooth2(a, b, c big.Int, fb []int64, rnd *rand.Rand, start big.Int, fn
 
 	// pick threshold
 	// TODO: sample a few locations in the range.  Just first and last?
-	var thresholds [sieverange/window]byte
-	for i := 0; i < sieverange; i+= window {
+	var thresholds [sieverange / window]byte
+	for i := 0; i < sieverange; i += window {
 		x := start.Add64(int64(i))
 		y := a.Mul(x).Add(b).Mul(x).Add(c)
 		thresholds[i/window] = byte(y.BitLen()) - 2*log2(maxp) // TODO: subtract more?
@@ -135,7 +135,7 @@ func sievesmooth2(a, b, c big.Int, fb []int64, rnd *rand.Rand, start big.Int, fn
 					f = append(f, p)
 				}
 			}
-			
+
 			// if remainder <= B^2, leftover is a prime
 			if y.Cmp64(maxp*maxp) <= 0 {
 				fmt.Printf("  false negative x=%d f(x)=%d f=%v·%d\n", x, a.Mul(x).Add(b).Mul(x).Add(c), f, y)
@@ -204,4 +204,3 @@ func makeSieveInfo(a, b, c big.Int, start big.Int, fb []int64, rnd *rand.Rand) [
 	}
 	return si
 }
-

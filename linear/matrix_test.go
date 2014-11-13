@@ -54,8 +54,8 @@ func TestMatrix(t *testing.T) {
 	}
 }
 
-func BenchmarkMatrix100(b *testing.B) { benchmarkMatrix(b, 100) }
-func BenchmarkMatrix1000(b *testing.B) { benchmarkMatrix(b, 1000) }
+func BenchmarkMatrix100(b *testing.B)   { benchmarkMatrix(b, 100) }
+func BenchmarkMatrix1000(b *testing.B)  { benchmarkMatrix(b, 1000) }
 func BenchmarkMatrix10000(b *testing.B) { benchmarkMatrix(b, 10000) }
 
 func benchmarkMatrix(b *testing.B, n uint) {

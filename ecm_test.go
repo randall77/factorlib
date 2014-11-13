@@ -23,14 +23,16 @@ func TestElliptic(t *testing.T) {
 			}
 		}
 	}
-	
+
 	// make sure addition is closed
 	for _, p := range onCurve {
 	testloop:
 		for _, q := range onCurve {
 			r := p.Add(q, N, A)
 			for _, s := range onCurve {
-				if r.Equals(s) { continue testloop }
+				if r.Equals(s) {
+					continue testloop
+				}
 			}
 			t.Fatalf("(%t %d %d)+(%t %d %d)=(%t %d %d) not on curve", p.inf, p.x, p.y, q.inf, q.x, q.y, r.inf, r.x, r.y)
 		}

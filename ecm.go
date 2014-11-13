@@ -1,6 +1,5 @@
 package factorlib
 
-
 import (
 	"github.com/randall77/factorlib/big"
 	"github.com/randall77/factorlib/primes"
@@ -13,12 +12,14 @@ func init() {
 
 // we use the elliptic curve y^2 = x^3 + ax + 1 for a random a in Z_n
 type point struct {
-	inf bool     // the point at infinity, aka the zero element of the field
+	inf  bool // the point at infinity, aka the zero element of the field
 	x, y big.Int
 }
 
 func (p point) Check(n, a big.Int) bool {
-	if p.inf { return true }
+	if p.inf {
+		return true
+	}
 	lhs := p.y.Square()
 	rhs := p.x.Square().Add(a).Mul(p.x).Add(big.One)
 	if lhs.Mod(n).Cmp(rhs.Mod(n)) != 0 {
@@ -39,8 +40,12 @@ func (p point) Equals(q point) bool {
 
 func (p point) Add(q point, n, a big.Int) point {
 	//log.Printf("add (%t %d %d) (%t %d %d)", p.inf, p.x, p.y, q.inf, q.x, q.y)
-	if p.inf { return q }
-	if q.inf { return p }
+	if p.inf {
+		return q
+	}
+	if q.inf {
+		return p
+	}
 	var num, denom big.Int
 	if !p.x.Equals(q.x) {
 		num = p.y.Sub(q.y)
@@ -67,12 +72,12 @@ func (p point) Mul(k int64, n, a big.Int) point {
 	// compute q=kp by repeated doubling
 	q := point{true, big.Int{}, big.Int{}}
 	for ; k > 1; k >>= 1 {
-		if k & 1 != 0 {
-			q = q.Add(p,n,a)
+		if k&1 != 0 {
+			q = q.Add(p, n, a)
 		}
-		p = p.Add(p,n,a)
+		p = p.Add(p, n, a)
 	}
-	return q.Add(p,n,a)
+	return q.Add(p, n, a)
 }
 
 func ecm(n big.Int, rnd *rand.Rand) (r []big.Int) {
@@ -80,7 +85,7 @@ func ecm(n big.Int, rnd *rand.Rand) (r []big.Int) {
 	if f := primepower(n, rnd); f != nil {
 		return f
 	}
-	
+
 	// somewhere in the guts of the ecm routine we panic a factor of n and
 	// catch it here.
 	defer func() {
@@ -94,7 +99,7 @@ func ecm(n big.Int, rnd *rand.Rand) (r []big.Int) {
 			// n divides 4a^3+27 - curve has repeating factors, so skip it.
 			continue
 		}
-		
+
 		p := point{false, big.Zero, big.One}
 		for i := 0; ; i++ {
 			p = p.Mul(primes.Get(i), n, a)

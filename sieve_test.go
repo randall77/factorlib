@@ -27,7 +27,7 @@ func TestSieve(t *testing.T) {
 	}
 
 	cnt := 0
-	
+
 	fn := func(x big.Int, factors []uint, remainder int64) []big.Int {
 		y := a.Mul(x).Add(b).Mul(x).Add(c)
 		z := big.One
@@ -41,7 +41,7 @@ func TestSieve(t *testing.T) {
 		cnt++
 		return nil
 	}
-	
+
 	sievesmooth(a, b, c, fb, rnd, fn)
 
 	if cnt == 0 {

@@ -37,17 +37,17 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 	// function to process sieve results
 	fn := func(x big.Int, factors []uint, remainder int64) []big.Int {
 		/*
-		fmt.Printf("%d^2-%d=%d=", x, n, x.Mul(x).Sub(n))
-		for i, f := range factors {
-			if i != 0 {
-				fmt.Printf("·")
+			fmt.Printf("%d^2-%d=%d=", x, n, x.Mul(x).Sub(n))
+			for i, f := range factors {
+				if i != 0 {
+					fmt.Printf("·")
+				}
+				fmt.Printf("%d", fb[f])
 			}
-			fmt.Printf("%d", fb[f])
-		}
-		if remainder != 1 {
-			fmt.Printf("·%d", remainder)
-		}
-		fmt.Println()
+			if remainder != 1 {
+				fmt.Printf("·%d", remainder)
+			}
+			fmt.Println()
 		*/
 		if remainder != 1 {
 			// try to find another record with the same largeprime
@@ -68,7 +68,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 		// Add equation to the matrix
 		idlist := m.AddRow(factors, eqn{x, factors})
 		if idlist == nil {
-			if m.Rows() % 100 == 0 {
+			if m.Rows()%100 == 0 {
 				log.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), falsepos, len(largeprimes))
 				falsepos = 0
 			}
