@@ -104,6 +104,10 @@ func (x Int) Cmp(y Int) int {
 	return x.v.Cmp(y.v)
 }
 
+func (x Int) Equals(y Int) bool {
+	return x.v.Cmp(y.v) == 0
+}
+
 func (x Int) Cmp64(y int64) int {
 	if x.BitLen() >= 64 {
 		if x.Sign() > 0 {
@@ -221,6 +225,7 @@ func (x Int) Mod64s(y int64, s *Scratch) int64 {
 var Zero = Int64(0)
 var One = Int64(1)
 var Two = Int64(2)
+var Three = Int64(3)
 var Ten = Int64(10)
 
 var minInt64 = Int64(math.MinInt64)

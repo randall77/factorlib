@@ -28,7 +28,7 @@ func TestSieve(t *testing.T) {
 
 	cnt := 0
 	
-	fn := func(x big.Int, factors []uint, remainder int64) bool {
+	fn := func(x big.Int, factors []uint, remainder int64) []big.Int {
 		y := a.Mul(x).Add(b).Mul(x).Add(c)
 		z := big.One
 		for _, f := range factors {
@@ -39,7 +39,7 @@ func TestSieve(t *testing.T) {
 			t.Errorf("bad sieve result z=%d, want %d", z, y)
 		}
 		cnt++
-		return false
+		return nil
 	}
 	
 	sievesmooth(a, b, c, fb, rnd, fn)
