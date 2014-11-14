@@ -2,8 +2,10 @@ package factorlib
 
 import (
 	"fmt"
-	"github.com/randall77/factorlib/big"
+	"log"
 	"math/rand"
+
+	"github.com/randall77/factorlib/big"
 )
 
 // sieve [-sieverange,sieverange) around mininum point.
@@ -64,8 +66,7 @@ func sievesmooth2(a, b, c big.Int, fb []int64, rnd *rand.Rand, start big.Int, fn
 	}
 
 	// sieve to find any potential smooth f(x)
-	sieve := make([]byte, window) // TODO: cache this?
-	res := sieveinner(sieve, si, thresholds[:])
+	res := sieveinner(si, thresholds[:])
 
 	s := &big.Scratch{}
 
@@ -145,27 +146,151 @@ func sievesmooth2(a, b, c big.Int, fb []int64, rnd *rand.Rand, start big.Int, fn
 	return nil
 }
 
-// TODO: write this in assembly?
-func sieveinner(sieve []byte, si []sieveinfo2, thresholds []byte) []int {
+// sieveinfo
+type sieveinfo3 struct {
+	pk   int32  // p^k, the amount we step by through the sieve array
+	off  uint16 // offset within the window which holds the next muliple of p^k
+	lg_p uint8  // log_2(p), the amount we add to each sieve array slot
+}
+
+// a block of sieveinfos
+type block struct {
+	next *block
+	num  int
+	data [64 - 2]sieveinfo3
+}
+
+func sieveinner(si []sieveinfo2, thresholds []byte) []int {
+	if window >= 1<<16 {
+		panic("window too big")
+	}
+
+	// compute stats about our sieve work
+	maxpk := int32(0)
+	nsmall := 0
+	for _, s := range si {
+		pk := s.pk
+		if pk < window {
+			nsmall++
+		}
+		if pk > maxpk {
+			maxpk = pk
+		}
+	}
+	nlarge := len(si) - nsmall
+
+	// Slice to store sieve work with pk < window
+	small := make([]sieveinfo3, 0, nsmall)
+
+	// For pk >= window, arrange sieve work in buckets of size w by offset.
+	// The offsets stored in this array are relative to the start
+	// of the bucket.  So all entries s in large[3] have an effective
+	// offset of 3*window+s.off
+	nw := 2 + int(maxpk/window)
+	large := make([]*block, nw)
+
+	// Allocate enough free blocks to hold everything.
+	// There will be at most one partially empty block for each window.
+	// Compute as the maximum # of full blocks + maximum # of nonfull blocks.
+	n := nlarge/len(block{}.data) + nw
+	blockstore := make([]block, n)
+	// start each window with one empty block
+	for i := 0; i < nw; i++ {
+		large[i] = &blockstore[i]
+	}
+	// put the rest in a free list
+	for i := nw; i < n-1; i++ {
+		blockstore[i].next = &blockstore[i+1]
+	}
+	freeblocks := &blockstore[nw]
+
+	// put each sieve entry into the appropriate bucket
+	for _, s := range si {
+		pk := s.pk
+		off := s.off
+		lg_p := s.lg_p
+		if pk < window {
+			small = append(small, sieveinfo3{pk, uint16(off), lg_p})
+			continue
+		}
+		i := off / window
+		b := large[i]
+		if b.num == len(b.data) {
+			c := freeblocks
+			freeblocks = c.next
+			c.next = b
+			large[i] = c
+			b = c
+		}
+		b.data[b.num] = sieveinfo3{pk, uint16(off % window), lg_p}
+		b.num++
+	}
+	log.Printf("len(si)=%d, len(small)=%d", len(si), len(small))
+	for i := 0; i < nw; i++ {
+		n := 0
+		for b := large[i]; b != nil; b = b.next {
+			n += b.num
+		}
+		log.Printf("len(large[%d])=%d", i, n)
+	}
+
 	var r []int
 	for i := 0; i < sieverange; i += window {
-		// clear sieve
-		for j := 0; j < window; j++ {
-			sieve[j] = 0
-		}
-		threshold := thresholds[i/window]
+		// start with a clear sieve
+		var sieve [window]byte
+
 		// increment sieve entries for f(x) that are divisible
 		// by each factor base prime.
-		for j := range si {
-			f := &si[j]
-			pk := int(f.pk)
-			lg_p := f.lg_p
-			j := int(f.off)
-			for ; j < window; j += pk {
-				sieve[j] += lg_p
+
+		// first, the small primes
+		for j, s := range small {
+			pk := int(s.pk)
+			off := int(s.off)
+			lg_p := s.lg_p
+			for ; off < window; off += pk {
+				sieve[off] += lg_p
 			}
-			f.off = int32(j - window) // for next time
+			small[j] = sieveinfo3{int32(pk), uint16(off - window), lg_p}
 		}
+
+		// second, the large primes
+		b := large[0]
+		for b != nil {
+			for _, s := range b.data[:b.num] {
+				pk := int(s.pk)
+				off := int(s.off)
+				lg_p := s.lg_p
+				sieve[off] += lg_p
+				off += pk
+				j := off / window
+				c := large[j]
+				if c.num == len(c.data) {
+					d := freeblocks
+					freeblocks = d.next
+					d.next = c
+					large[j] = d
+					c = d
+				}
+				c.data[c.num] = sieveinfo3{int32(pk), uint16(off % window), lg_p}
+				c.num++
+			}
+			c := b
+			b = b.next
+			c.num = 0
+			c.next = freeblocks
+			freeblocks = c
+		}
+
+		// shift large buckets down by one
+		copy(large, large[1:])
+		// allocate a new empty bucket for the last one
+		b = freeblocks
+		freeblocks = b.next
+		b.next = nil
+		large[len(large)-1] = b
+
+		// check for smooth numbers
+		threshold := thresholds[i/window]
 		for j := 0; j < window; j++ {
 			if sieve[j] >= threshold {
 				r = append(r, i+j)
