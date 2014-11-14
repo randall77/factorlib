@@ -1,11 +1,12 @@
 package factorlib
 
 import (
+	"log"
+	"math/rand"
+
 	"github.com/randall77/factorlib/big"
 	"github.com/randall77/factorlib/linear"
 	"github.com/randall77/factorlib/primes"
-	"log"
-	"math/rand"
 )
 
 func init() {
@@ -137,7 +138,7 @@ type eqn struct {
 // upon a factor of n, return it instead.
 func makeFactorBase(n big.Int) ([]int64, int64) {
 	// upper limit on prime factors (TODO: dependent on n) that we sieve with
-	const B = 50000
+	const B = 500000
 	fb := []int64{-1}
 	s := &big.Scratch{}
 	for i := 0; ; i++ {
