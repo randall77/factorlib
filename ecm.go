@@ -58,7 +58,7 @@ func (p point) Add(q point, n, a big.Int) point {
 	if !f.Equals(big.One) {
 		panic(f)
 	}
-	s := num.Mul(denom.Mod(n).ModInv(n)).Mod(n)
+	s := num.Mul(denom.ModInv(n)).Mod(n)
 	rx := s.Square().Sub(p.x).Sub(q.x).Mod(n)
 	ry := s.Mul(p.x.Sub(rx)).Sub(p.y).Mod(n)
 	return point{rx, ry}
@@ -90,8 +90,7 @@ func ecm(n big.Int, rnd *rand.Rand) (r []big.Int) {
 	}()
 	for {
 		a := n.Rand(rnd)
-		d := a.Mul(a).Mul(a).Lsh(2).Add64(27).Mod(n)
-		if d.IsZero() {
+		if a.Cube().Lsh(2).Add64(27).Mod(n).IsZero() {
 			// n divides 4a^3+27 - curve has repeating factors, so skip it.
 			continue
 		}

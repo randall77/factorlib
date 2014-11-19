@@ -118,7 +118,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 
 	x0 := n.SqrtCeil()
 	for {
-		log.Printf("sieving at %d\n", x0)
+		//log.Printf("sieving at %d\n", x0)
 		r := sievesmooth2(big.Int64(1), big.Int64(0), n.Neg(), fb, rnd, x0, fn)
 		if r != nil {
 			return r
@@ -138,7 +138,7 @@ type eqn struct {
 // upon a factor of n, return it instead.
 func makeFactorBase(n big.Int) ([]int64, int64) {
 	// upper limit on prime factors (TODO: dependent on n) that we sieve with
-	const B = 500000
+	const B = 50000
 	fb := []int64{-1}
 	s := &big.Scratch{}
 	for i := 0; ; i++ {

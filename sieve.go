@@ -2,7 +2,6 @@ package factorlib
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 
 	"github.com/randall77/factorlib/big"
@@ -199,10 +198,13 @@ func sieveinner(si []sieveinfo2, thresholds []byte) []int {
 		large[i] = &blockstore[i]
 	}
 	// put the rest in a free list
-	for i := nw; i < n-1; i++ {
-		blockstore[i].next = &blockstore[i+1]
+	var freeblocks *block
+	if nw < n {
+		for i := nw; i < n-1; i++ {
+			blockstore[i].next = &blockstore[i+1]
+		}
+		freeblocks = &blockstore[nw]
 	}
-	freeblocks := &blockstore[nw]
 
 	// put each sieve entry into the appropriate bucket
 	for _, s := range si {
@@ -225,6 +227,7 @@ func sieveinner(si []sieveinfo2, thresholds []byte) []int {
 		b.data[b.num] = sieveinfo3{pk, uint16(off % window), lg_p}
 		b.num++
 	}
+	/*
 	log.Printf("len(si)=%d, len(small)=%d", len(si), len(small))
 	for i := 0; i < nw; i++ {
 		n := 0
@@ -233,6 +236,7 @@ func sieveinner(si []sieveinfo2, thresholds []byte) []int {
 		}
 		log.Printf("len(large[%d])=%d", i, n)
 	}
+	*/
 
 	var r []int
 	for i := 0; i < sieverange; i += window {
@@ -254,8 +258,7 @@ func sieveinner(si []sieveinfo2, thresholds []byte) []int {
 		}
 
 		// second, the large primes
-		b := large[0]
-		for b != nil {
+		for b := large[0]; b != nil; {
 			for _, s := range b.data[:b.num] {
 				pk := int(s.pk)
 				off := int(s.off)
@@ -284,13 +287,41 @@ func sieveinner(si []sieveinfo2, thresholds []byte) []int {
 		// shift large buckets down by one
 		copy(large, large[1:])
 		// allocate a new empty bucket for the last one
-		b = freeblocks
+		b := freeblocks
 		freeblocks = b.next
 		b.next = nil
 		large[len(large)-1] = b
 
 		// check for smooth numbers
 		threshold := thresholds[i/window]
+		for j := 0; j < window; j++ {
+			if sieve[j] >= threshold {
+				r = append(r, i+j)
+			}
+		}
+	}
+	return r
+}
+
+func sieveinner_old(si []sieveinfo2, thresholds []byte) []int {
+	var r []int
+	for i := 0; i < sieverange; i += window {
+		// clear sieve
+		var sieve [window]byte
+
+		threshold := thresholds[i/window]
+		// increment sieve entries for f(x) that are divisible
+		// by each factor base prime.
+		for j := range si {
+			f := &si[j]
+			pk := int(f.pk)
+			lg_p := f.lg_p
+			j := int(f.off)
+			for ; j < window; j += pk {
+				sieve[j] += lg_p
+			}
+			f.off = int32(j - window) // for next time
+		}
 		for j := 0; j < window; j++ {
 			if sieve[j] >= threshold {
 				r = append(r, i+j)

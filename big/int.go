@@ -145,6 +145,12 @@ func (x Int) ProbablyPrime(n int) bool {
 func (x Int) Square() Int {
 	return x.Mul(x)
 }
+func (x Int) Cube() Int {
+	y := new(big.Int)
+	y.Mul(x.v, x.v)
+	y.Mul(y, x.v)
+	return Int{y}
+}
 
 func (x Int) Exp(k int64) Int {
 	b := big.NewInt(k)

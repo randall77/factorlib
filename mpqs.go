@@ -27,7 +27,7 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 	if f := primepower(n, rnd); f != nil {
 		return f
 	}
-	
+
 	// first, pick a factor base
 	fb, a := makeFactorBase(n)
 	if a != 0 {
@@ -36,8 +36,9 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 
 	maxp := fb[len(fb)-1]
 
-	for i := 0; ; i++ {
-		// Pick a
+	for {
+		// Pick an a
+		i := len(fb) / 2
 		a := primes.Get(i)
 
 		// Pick b = sqrt(n) mod a
