@@ -6,6 +6,47 @@ import (
 	"math/rand"
 )
 
+// see http://en.wikipedia.org/wiki/Lenstra_elliptic_curve_factorization
+
+// The elliptic curve factorization method (ECM) uses points on the curve
+//    y^2 = x^3 + ax + 1 mod n
+// where a is chosen at random.
+//
+// When n is prime, the points on the curve plus a "point at infinity"
+// form a group.  Mod a non-prime, they don't quite.  ECM tries to
+// find one of these non-group cases and can extract a factorization
+// of n from it.
+//
+// The group + operation on points on the curve is tricky.
+// http://en.wikipedia.org/wiki/Elliptic_curve#The_group_law
+// The point at infinity is the 0 for the group (x+0=0+x=x).
+//  r = p + q:
+//    if px != qx
+//      s = (qy - py) / (qx - px)
+//      rx = s^2 - px - qx
+//      ry = s * (px - rx) - py
+//    else
+//      if py == -qy
+//        r = 0,0
+//      else
+//        must be the case that p == q
+//        s = (3*px^2 + a) / (2*py)
+//        rx = s^2 - px - qx
+//        ry = s * (px - rx) - py
+// Where all computations are done mod n.
+
+// When n is not prime, one of the divide steps might fail.  That
+// happens because gcd(n, divisor) > 1, and that gives us a factor of
+// n.
+
+// We choose a at random, making sure that the elliptic curve is
+// nonsingular by checking that 4a^3+27 mod n is not zero.
+
+// Starting at a point p = (0, 1) on the curve, we compute kp for k's
+// with lots of small factors.  If we reach the 0 element, then choose
+// a new a and try again.  If the divide fails, we've found a factor
+// of n.
+
 func init() {
 	factorizers["ecm"] = ecm
 }
@@ -15,14 +56,14 @@ type point struct {
 	x, y big.Int
 }
 
-func (p point) Inf() bool {
+func (p point) Zero() bool {
 	// since x==y==0 is never a solution to the elliptic curve, we
 	// reserve that bit pattern for encoding infinity.
 	return p.x.IsZero() && p.y.IsZero()
 }
 
 func (p point) Check(n, a big.Int) bool {
-	if p.Inf() {
+	if p.Zero() {
 		return true
 	}
 	lhs := p.y.Square()
@@ -35,11 +76,10 @@ func (p point) Equals(q point) bool {
 }
 
 func (p point) Add(q point, n, a big.Int) point {
-	//log.Printf("add (%t %d %d) (%t %d %d)", p.inf, p.x, p.y, q.inf, q.x, q.y)
-	if p.Inf() {
+	if p.Zero() {
 		return q
 	}
-	if q.Inf() {
+	if q.Zero() {
 		return p
 	}
 	var num, denom big.Int
@@ -98,7 +138,7 @@ func ecm(n big.Int, rnd *rand.Rand) (r []big.Int) {
 		p := point{big.Zero, big.One}
 		for i := 0; ; i++ {
 			p = p.Mul(primes.Get(i), n, a)
-			if p.Inf() {
+			if p.Zero() {
 				// this curve didn't work
 				break
 			}
