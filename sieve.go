@@ -342,6 +342,10 @@ func makeSieveInfo(a, b, c big.Int, start big.Int, fb []int64, rnd *rand.Rand) [
 	s := &big.Scratch{}
 
 	for _, p := range fb[1:] {
+		if a.Mod64(p) == 0 {
+			// can happen in mpqs if p is one of the factors we used to construct a
+			continue
+		}
 		pk := p
 		for k := uint(1); ; k++ {
 			if pk > fb[len(fb)-1] {

@@ -3,6 +3,7 @@ package factorlib
 import (
 	"math/rand"
 	"github.com/randall77/factorlib/big"
+	"fmt"
 )
 
 // generic math routines
@@ -77,7 +78,7 @@ func modInv(x, n int64) int64 {
 		r, newr = newr, r-q*newr
 	}
 	if r > 1 {
-		panic("uninvertible")
+		panic(fmt.Sprintf("%d is uninvertible mod %d", x, n))
 	}
 	if t < 0 {
 		t += n
