@@ -2,6 +2,7 @@ package factorlib
 
 import (
 	"math/rand"
+	"github.com/randall77/factorlib/big"
 )
 
 // generic math routines
@@ -231,6 +232,46 @@ func sqrtModN(a int64, n []primePower, rnd *rand.Rand) int64 {
 	}
 	// check result
 	if r*r%N != a {
+		panic("bad sqrt")
+	}
+	return r
+}
+
+// returns a solution to x^2 == a mod n, where n is a product of the listed prime powers.
+//   gcd(a,n) == 1
+//   n[i].k >= 1
+//   a must be a quadratic residue mod each prime
+func bigSqrtModN(a big.Int, n []primePower, rnd *rand.Rand) big.Int {
+	if a.Cmp(big.One) <= 0 {
+		return a
+	}
+
+	// compute N = product of all primes
+	N := big.Int64(1)
+	for _, pp := range n {
+		for i := uint(0); i < pp.k; i++ {
+			N = N.Mul64(pp.p)
+		}
+	}
+
+	// use Chinese Remainder Theorem to compute result one p^k at a time.
+	r := big.Int64(0)
+	for _, pp := range n {
+		// compute p^k
+		pk := int64(1)
+		for i := uint(0); i < pp.k; i++ {
+			pk *= pp.p
+		}
+
+		// find a solution to x^2 == a mod p^k
+		x := sqrtModPK(a.Mod64(pk), pp.p, pp.k, rnd)
+
+		// add it in to total result
+		M := N.Div64(pk)
+		r = r.Add(M.Mul64(x).Mul64(modInv(M.Mod64(pk), pk))).Mod(N)
+	}
+	// check result
+	if !r.Square().Mod(N).Equals(a) {
 		panic("bad sqrt")
 	}
 	return r
