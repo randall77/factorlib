@@ -55,7 +55,7 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 	maxp := fb[len(fb)-1]
 
 	// Figure out maximum possible a we want.
-	amax := n.SqrtCeil().Lsh(1).Div64(sieverange)
+	amax := n.SqrtCeil().Lsh(2).Div64(sieverange)
 	// Point to stop adding more factors to a.
 	// It is ok if a is a bit small.
 	amin := amax.Div64(maxp)
@@ -91,8 +91,11 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 		// Set c = (b^2-n)/a
 		c := b.Square().Sub(n).Div(a)
 
-		// function to process sieve results
-		fn := func(x big.Int, factors []uint, remainder int64) []big.Int {
+		x0 := n.SqrtCeil().Sub(b).Div(a)
+		for _, r := range sievesmooth(a, b.Lsh(1), c, fb, x0.Sub64(sieverange/2), rnd) {
+			x := r.x
+			factors := r.factors
+			remainder := r.remainder
 			/*
 			fmt.Printf("%d*%d^2+%d*%d+%d=%d=", a, x, b, x, c, a.Mul(x).Add(b).Mul(x).Add(c))
 			for i, f := range factors {
@@ -118,7 +121,7 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 				if !ok {
 					// haven't seen this large prime yet.  Save record for later
 					largeprimes[remainder] = largerecord{x, factors}
-					return nil
+					continue
 				}
 				// combine current equation with other largeprime equation
 				// x1^2 === prod(f1) * largeprime
@@ -135,7 +138,7 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 					log.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), falsepos, len(largeprimes))
 					falsepos = 0
 				}
-				return nil
+				continue
 			}
 
 			// We found a set of equations with all even powers.
@@ -166,24 +169,18 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 			if a.Cmp(b) == 0 {
 				// trivial equation, ignore it
 				log.Println("triv A")
-				return nil
+				continue
 			}
 			if a.Add(b).Cmp(n) == 0 {
 				// trivial equation, ignore it
 				log.Println("triv B")
-				return nil
+				continue
 			}
 
 			r := a.Add(b).GCD(n)
 			return []big.Int{r, n.Div(r)}
 		}
-		x0 := n.SqrtCeil().Sub(b).Div(a)
-		r := sievesmooth2(a, b.Lsh(1), c, fb, rnd, x0.Sub64(sieverange/2), fn)
-		if r != nil {
-			return r
-		}
 	}
-	return nil
 }
 
 type byInt64Value []int64
