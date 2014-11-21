@@ -7,7 +7,7 @@ import (
 	"github.com/randall77/factorlib/big"
 )
 
-// sieve [-sieverange,sieverange) around mininum point.
+// width of window to sieve at once.  TODO: make configurable?
 const sieverange = 1 << 20
 
 // use an array of this size to do the sieving
@@ -40,9 +40,6 @@ func sievesmooth(a, b, c big.Int, fb []int64, x0 big.Int, rnd *rand.Rand) []siev
 
 	maxp := fb[len(fb)-1]
 
-	// results buffer
-	var factors []uint
-
 	// find starting points
 	si := makeSieveInfo(a, b, c, fb, x0, rnd)
 
@@ -58,6 +55,8 @@ func sievesmooth(a, b, c big.Int, fb []int64, x0 big.Int, rnd *rand.Rand) []siev
 	// sieve to find any potential smooth f(x)
 	res := sieveinner(si, thresholds[:])
 
+	// results buffer
+	var factors []uint
 	s := &big.Scratch{}
 
 	// check potential results using trial factorization
@@ -99,6 +98,7 @@ func sievesmooth(a, b, c big.Int, fb []int64, x0 big.Int, rnd *rand.Rand) []siev
 		result = append(result, sieveResult{x, dup(factors), y.Int64()})
 		if len(result) > 2*len(fb) {
 			// early out when we're factoring small n
+			// TODO: include in spec for sievesmooth function?
 			return result
 		}
 	}
@@ -145,7 +145,7 @@ type sieveinfo_inner struct {
 	lg_p uint8  // log_2(p), the amount we add to each sieve array slot
 }
 
-// a block of sieveinfos
+// a block of sieveinfo_inners
 type block struct {
 	next *block
 	num  int
