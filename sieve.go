@@ -221,14 +221,14 @@ func sieveinner(si []sieveinfo, thresholds []byte) []int {
 		b.num++
 	}
 	/*
-	log.Printf("len(si)=%d, len(small)=%d", len(si), len(small))
-	for i := 0; i < nw; i++ {
-		n := 0
-		for b := large[i]; b != nil; b = b.next {
-			n += b.num
+		log.Printf("len(si)=%d, len(small)=%d", len(si), len(small))
+		for i := 0; i < nw; i++ {
+			n := 0
+			for b := large[i]; b != nil; b = b.next {
+				n += b.num
+			}
+			log.Printf("len(large[%d])=%d", i, n)
 		}
-		log.Printf("len(large[%d])=%d", i, n)
-	}
 	*/
 
 	var r []int

@@ -43,17 +43,17 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 			factors := r.factors
 			remainder := r.remainder
 			/*
-			fmt.Printf("%d^2-%d=%d=", x, n, x.Mul(x).Sub(n))
-			for i, f := range factors {
-				if i != 0 {
-					fmt.Printf("·")
+				fmt.Printf("%d^2-%d=%d=", x, n, x.Mul(x).Sub(n))
+				for i, f := range factors {
+					if i != 0 {
+						fmt.Printf("·")
+					}
+					fmt.Printf("%d", fb[f])
 				}
-				fmt.Printf("%d", fb[f])
-			}
-			if remainder != 1 {
-				fmt.Printf("·%d", remainder)
-			}
-			fmt.Println()
+				if remainder != 1 {
+					fmt.Printf("·%d", remainder)
+				}
+				fmt.Println()
 			*/
 			if remainder != 1 {
 				// try to find another record with the same largeprime
@@ -70,7 +70,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could remainder divide n?
 				factors = append(factors, lr.f...)
 			}
-			
+
 			// Add equation to the matrix
 			idlist := m.AddRow(factors, eqn{x, factors})
 			if idlist == nil {
@@ -80,7 +80,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				}
 				continue
 			}
-			
+
 			// We found a set of equations with all even powers.
 			// Compute a and b where a^2 === b^2 mod n
 			a := big.One
@@ -105,7 +105,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 					panic("gauss elim failed")
 				}
 			}
-			
+
 			if a.Cmp(b) == 0 {
 				// trivial equation, ignore it
 				log.Println("triv A")
@@ -116,7 +116,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 				log.Println("triv B")
 				continue
 			}
-			
+
 			r := a.Add(b).GCD(n)
 			return []big.Int{r, n.Div(r)}
 		}

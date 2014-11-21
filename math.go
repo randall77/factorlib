@@ -1,9 +1,9 @@
 package factorlib
 
 import (
-	"math/rand"
-	"github.com/randall77/factorlib/big"
 	"fmt"
+	"github.com/randall77/factorlib/big"
+	"math/rand"
 )
 
 // generic math routines
