@@ -182,9 +182,3 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 		}
 	}
 }
-
-type byInt64Value []int64
-
-func (a byInt64Value) Len() int           { return len(a) }
-func (a byInt64Value) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byInt64Value) Less(i, j int) bool { return a[i] < a[j] }
