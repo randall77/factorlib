@@ -2,6 +2,7 @@ package factorlib
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 
 	"github.com/randall77/factorlib/big"
@@ -40,16 +41,32 @@ func sievesmooth(a, b, c big.Int, fb []int64, x0 big.Int, rnd *rand.Rand) []siev
 
 	maxp := fb[len(fb)-1]
 
+	// Compute scaling factor for logarithms
+	// Note: we assume that the maximum f(x) is achieved at one of the endpoints of the sieve range.
+	y0 := a.Mul(x0).Add(b).Mul(x0).Add(c).Abs()
+	x1 := x0.Add64(sieverange-1)
+	y1 := a.Mul(x1).Add(b).Mul(x1).Add(c).Abs()
+	maxf := y0
+	if y1.Cmp(maxf) > 0 {
+		maxf = y1
+	}
+	scale := 255/maxf.Log()
+	
 	// find starting points
-	si := makeSieveInfo(a, b, c, fb, x0, rnd)
+	si := makeSieveInfo(a, b, c, fb, x0, scale, rnd)
 
-	// pick threshold
-	// TODO: sample a few locations in the range.  Just first and last?
+	// compute thresholds for each window
 	var thresholds [sieverange / window]byte
 	for i := 0; i < sieverange; i += window {
 		x := x0.Add64(int64(i))
-		y := a.Mul(x).Add(b).Mul(x).Add(c)
-		thresholds[i/window] = byte(y.BitLen()) - 2*log2(maxp) // TODO: subtract more?
+		y0 = a.Mul(x).Add(b).Mul(x).Add(c).Abs()
+		x = x.Add64(window)
+		y1 = a.Mul(x).Add(b).Mul(x).Add(c).Abs()
+		m := y0
+		if y1.Cmp(m) > 0 {
+			m = y1
+		}
+		thresholds[i/window] = byte(scale * (m.Log() - 2 * math.Log(float64(maxp))))
 	}
 
 	// sieve to find any potential smooth f(x)
@@ -302,7 +319,7 @@ type sieveinfo struct {
 	off  int32 // working offset in sieve array
 }
 
-func makeSieveInfo(a, b, c big.Int, fb []int64, x0 big.Int, rnd *rand.Rand) []sieveinfo {
+func makeSieveInfo(a, b, c big.Int, fb []int64, x0 big.Int, scale float64, rnd *rand.Rand) []sieveinfo {
 	var si []sieveinfo
 	s := &big.Scratch{}
 	maxp := fb[len(fb)-1]
@@ -313,6 +330,7 @@ func makeSieveInfo(a, b, c big.Int, fb []int64, x0 big.Int, rnd *rand.Rand) []si
 			// Ignore this prime - we might miss a few smooth f(x), but such is life.
 			continue
 		}
+		lg_p := byte(scale * math.Log(float64(p))) // note: round down to avoid overflow in sieve buckets
 		pk := p
 		for k := uint(1); ; k++ {
 			if pk > maxp {
@@ -324,7 +342,7 @@ func makeSieveInfo(a, b, c big.Int, fb []int64, x0 big.Int, rnd *rand.Rand) []si
 			for _, r := range quadraticModPK(a.Mod64s(pk, s), b.Mod64s(pk, s), c.Mod64s(pk, s), p, k, pk, rnd) {
 				// find first pk*i+r which is >= x0
 				off := (r - st + pk) % pk
-				si = append(si, sieveinfo{int32(pk), log2(p), int32(off)})
+				si = append(si, sieveinfo{int32(pk), lg_p, int32(off)})
 			}
 			pk *= p
 		}

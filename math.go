@@ -13,16 +13,6 @@ import (
 // known to be < 2^31. (That leaves room for a*x+b*y computations
 // without overflowing.)
 
-// return ceil(log_2(n))
-func log2(n int64) uint8 {
-	var r uint8
-	for n != 0 {
-		n >>= 1
-		r++
-	}
-	return r
-}
-
 // exp returns x^e
 func exp(x int64, e uint) int64 {
 	r := int64(1)

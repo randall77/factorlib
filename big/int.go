@@ -78,6 +78,13 @@ func (x Int) Neg() Int {
 	return Int{new(big.Int).Neg(x.v)}
 }
 
+func (x Int) Abs() Int {
+	if x.v.Sign() >= 0 {
+		return x
+	}
+	return Int{new(big.Int).Neg(x.v)}
+}
+
 func (x Int) Lsh(n uint) Int {
 	return Int{new(big.Int).Lsh(x.v, n)}
 }
@@ -138,6 +145,11 @@ func (x Int) Bit(i int) uint {
 
 func (x Int) ProbablyPrime(n int) bool {
 	return x.v.ProbablyPrime(n)
+}
+
+func (x Int) Log() float64 {
+	f, _ := new(big.Rat).SetInt(x.v).Float64()
+	return math.Log(f)
 }
 
 // Other math

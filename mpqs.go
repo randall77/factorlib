@@ -91,7 +91,9 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 		// Set c = (b^2-n)/a
 		c := b.Square().Sub(n).Div(a)
 
+		// Mid point of sieve
 		x0 := n.SqrtCeil().Sub(b).Div(a)
+
 		for _, r := range sievesmooth(a, b.Lsh(1), c, fb, x0.Sub64(sieverange/2), rnd) {
 			x := r.x
 			factors := r.factors
