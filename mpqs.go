@@ -5,6 +5,7 @@ import (
 	"github.com/randall77/factorlib/linear"
 	"log"
 	"math/rand"
+	"runtime"
 )
 
 func init() {
@@ -70,7 +71,125 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 	}
 	largeprimes := map[int64]largerecord{}
 
+	// channels to communicate with workers
+	results := make(chan sieveResult, 100)
+	stop := make(chan struct{})
+	
+	// spawn workers which find smooth relations
+	workers := runtime.NumCPU() // TODO: set up as a parameter somehow?
+	log.Printf("workers: %d\n", workers)
+	for i := 0; i < workers; i++ {
+		go mpqs_worker(n, amin, fb, results, stop, rnd.Int63())
+	}
+
+	// process results
 	for {
+		r := <- results
+		x := r.x
+		factors := r.factors
+		remainder := r.remainder
+		/*
+		fmt.Printf("%d*%d^2+%d*%d+%d=%d=", a, x, b, x, c, a.Mul(x).Add(b).Mul(x).Add(c))
+		for i, f := range factors {
+			if i != 0 {
+				fmt.Printf("·")
+			}
+			fmt.Printf("%d", fb[f])
+		}
+		if remainder != 1 {
+			fmt.Printf("·%d", remainder)
+		}
+		fmt.Println()
+		*/
+		if remainder != 1 {
+			// try to find another record with the same largeprime
+			lr, ok := largeprimes[remainder]
+			if !ok {
+				// haven't seen this large prime yet.  Save record for later
+				largeprimes[remainder] = largerecord{x, factors}
+				continue
+			}
+			// combine current equation with other largeprime equation
+			// x1^2 === prod(f1) * largeprime
+			// x2^2 === prod(f2) * largeprime
+			//fmt.Printf("  largeprime %d match\n", remainder)
+			x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could remainder divide n?
+			factors = append(factors, lr.f...)
+		}
+		
+		// Add equation to the matrix
+		idlist := m.AddRow(factors, eqn{x, factors})
+		if idlist == nil {
+			if m.Rows()%100 == 0 {
+				log.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), falsepos, len(largeprimes))
+				falsepos = 0
+			}
+			continue
+		}
+		
+		// We found a set of equations with all even powers.
+		// Compute a and b where a^2 === b^2 mod n
+		a := big.One
+		b := big.One
+		odd := make([]bool, len(fb))
+		for _, id := range idlist {
+			e := id.(eqn)
+			a = a.Mul(e.x).Mod(n)
+			for _, i := range e.f {
+				if !odd[i] {
+					// first occurrence of this factor
+					odd[i] = true
+					continue
+				}
+				// second occurrence of this factor
+				b = b.Mul64(fb[i]).Mod(n)
+				odd[i] = false
+			}
+		}
+		for _, o := range odd {
+			if o {
+				panic("gauss elim failed")
+			}
+		}
+		
+		if a.Cmp(b) == 0 {
+			// trivial equation, ignore it
+			log.Println("triv A")
+			continue
+		}
+		if a.Add(b).Cmp(n) == 0 {
+			// trivial equation, ignore it
+			log.Println("triv B")
+			continue
+		}
+		f := a.Add(b).GCD(n)
+		res := []big.Int{f, n.Div(f)}
+		
+		// shut down workers
+		close(stop)
+
+		// drain results, look for ack from workers
+		for k := 0; k < workers; {
+			r := <- results
+			if r.remainder == 0 {
+				// worker returned "I'm done" sentinel.
+				k++
+			}
+		}
+		return res
+	}
+}
+
+func mpqs_worker(n big.Int, amin big.Int, fb []int64, res chan sieveResult, stop chan struct{}, seed int64) {
+	rnd := rand.New(rand.NewSource(seed))
+	for {
+		select {
+		case <- stop:
+			res <- sieveResult{}
+			return
+		default:
+		}
+
 		// Pick an a.  Use a random product of factor base primes
 		// that multiply to at least amin.
 		af := map[uint]uint{}
@@ -80,107 +199,33 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 			af[f] += 1
 			a = a.Mul64(fb[f])
 		}
-
+		
 		// Pick b = sqrt(n) mod a
 		var pp []primePower
 		for i, k := range af {
 			pp = append(pp, primePower{fb[i], k})
 		}
 		b := bigSqrtModN(n.Mod(a), pp, rnd)
-
+		
 		// Set c = (b^2-n)/a
 		c := b.Square().Sub(n).Div(a)
-
-		// Mid point of sieve
+		
+		// Find best point to sieve around
 		x0 := n.SqrtCeil().Sub(b).Div(a)
-
+		
 		for _, r := range sievesmooth(a, b.Lsh(1), c, fb, x0.Sub64(sieverange/2), rnd) {
-			x := r.x
-			factors := r.factors
-			remainder := r.remainder
-			/*
-				fmt.Printf("%d*%d^2+%d*%d+%d=%d=", a, x, b, x, c, a.Mul(x).Add(b).Mul(x).Add(c))
-				for i, f := range factors {
-					if i != 0 {
-						fmt.Printf("·")
-					}
-					fmt.Printf("%d", fb[f])
-				}
-				if remainder != 1 {
-					fmt.Printf("·%d", remainder)
-				}
-				fmt.Println()
-			*/
+			r.x = a.Mul(r.x).Add(b)
 			for f, k := range af {
 				for i := uint(0); i < k; i++ {
-					factors = append(factors, f)
+					r.factors = append(r.factors, f)
 				}
 			}
-			x = a.Mul(x).Add(b)
-			if remainder != 1 {
-				// try to find another record with the same largeprime
-				lr, ok := largeprimes[remainder]
-				if !ok {
-					// haven't seen this large prime yet.  Save record for later
-					largeprimes[remainder] = largerecord{x, factors}
-					continue
-				}
-				// combine current equation with other largeprime equation
-				// x1^2 === prod(f1) * largeprime
-				// x2^2 === prod(f2) * largeprime
-				//fmt.Printf("  largeprime %d match\n", remainder)
-				x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could remainder divide n?
-				factors = append(factors, lr.f...)
+			select {
+			case res <- r:
+			case <- stop:
+				res <- sieveResult{}
+				return
 			}
-
-			// Add equation to the matrix
-			idlist := m.AddRow(factors, eqn{x, factors})
-			if idlist == nil {
-				if m.Rows()%100 == 0 {
-					log.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), falsepos, len(largeprimes))
-					falsepos = 0
-				}
-				continue
-			}
-
-			// We found a set of equations with all even powers.
-			// Compute a and b where a^2 === b^2 mod n
-			a := big.One
-			b := big.One
-			odd := make([]bool, len(fb))
-			for _, id := range idlist {
-				e := id.(eqn)
-				a = a.Mul(e.x).Mod(n)
-				for _, i := range e.f {
-					if !odd[i] {
-						// first occurrence of this factor
-						odd[i] = true
-						continue
-					}
-					// second occurrence of this factor
-					b = b.Mul64(fb[i]).Mod(n)
-					odd[i] = false
-				}
-			}
-			for _, o := range odd {
-				if o {
-					panic("gauss elim failed")
-				}
-			}
-
-			if a.Cmp(b) == 0 {
-				// trivial equation, ignore it
-				log.Println("triv A")
-				continue
-			}
-			if a.Add(b).Cmp(n) == 0 {
-				// trivial equation, ignore it
-				log.Println("triv B")
-				continue
-			}
-
-			r := a.Add(b).GCD(n)
-			return []big.Int{r, n.Div(r)}
 		}
 	}
 }
