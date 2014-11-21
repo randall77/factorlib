@@ -9,7 +9,7 @@ import (
 )
 
 // width of window to sieve at once.  TODO: make configurable?
-const sieverange = 1 << 20
+const sieverange = 1 << 24
 
 // use an array of this size to do the sieving
 const window = 1 << 14
