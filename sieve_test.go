@@ -1,16 +1,18 @@
 package factorlib
 
 import (
-	"github.com/randall77/factorlib/big"
-	"github.com/randall77/factorlib/primes"
 	"math/rand"
 	"testing"
+
+	"github.com/randall77/factorlib/big"
+	"github.com/randall77/factorlib/primes"
 )
 
 func TestSieve(t *testing.T) {
 	a := big.Int64(23)
 	b := big.Int64(-9813)
 	c := big.Int64(1011)
+	x0 := big.Int64(426) // ~root of ax^2+bx+c
 
 	rnd := rand.New(rand.NewSource(123))
 
@@ -26,25 +28,21 @@ func TestSieve(t *testing.T) {
 		}
 	}
 
-	cnt := 0
+	results := sievesmooth(a, b, c, fb, x0, rnd)
 
-	fn := func(x big.Int, factors []uint, remainder int64) []big.Int {
-		y := a.Mul(x).Add(b).Mul(x).Add(c)
-		z := big.One
-		for _, f := range factors {
-			z = z.Mul64(fb[f])
-		}
-		z = z.Mul64(remainder)
-		if z.Cmp(y) != 0 {
-			t.Errorf("bad sieve result z=%d, want %d", z, y)
-		}
-		cnt++
-		return nil
+	if len(results) == 0 {
+		t.Errorf("no results for a=%d b=%d c=%d", a, b, c)
 	}
 
-	sievesmooth(a, b, c, fb, rnd, fn)
-
-	if cnt == 0 {
-		t.Errorf("no results for a=%d b=%d c=%d", a, b, c)
+	for _, r := range results {
+		y := a.Mul(r.x).Add(b).Mul(r.x).Add(c)
+		z := big.One
+		for _, f := range r.factors {
+			z = z.Mul64(fb[f])
+		}
+		z = z.Mul64(r.remainder)
+		if !z.Equals(y) {
+			t.Errorf("bad sieve result z=%d, want %d", z, y)
+		}
 	}
 }

@@ -1,21 +1,12 @@
 package factorlib
 
 import (
-	"github.com/randall77/factorlib/big"
-	"github.com/randall77/factorlib/primes"
 	"math/rand"
 	"testing"
-)
 
-func TestLog(t *testing.T) {
-	for n := int64(0); n <= 65536; n++ {
-		s := uint8(big.Int64(n).BitLen())
-		r := log2(n)
-		if r != s {
-			t.Errorf("n=%d want %d, got %d", n, s, r)
-		}
-	}
-}
+	"github.com/randall77/factorlib/big"
+	"github.com/randall77/factorlib/primes"
+)
 
 func TestGCD(t *testing.T) {
 	const n = 200
