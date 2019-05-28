@@ -77,130 +77,112 @@ func mpqs(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	largeprimes := map[int64]largerecord{}
 
 	// channels to communicate with workers
-	results := make(chan sieveResult, 100)
-	stop := make(chan struct{})
-
-	// spawn workers which find smooth relations
 	workers := runtime.NumCPU() // TODO: set up as a parameter somehow?
 	logger.Printf("workers: %d\n", workers)
+	seeds := make(chan int64, workers)
+	results := make(chan []sieveResult, workers)
+
+	// Spawn workers which find smooth relations
 	for i := 0; i < workers; i++ {
-		go mpqs_worker(n, amin, fb, results, stop, rnd.Int63())
+		seeds <- rnd.Int63() // Add a task to the work queue.
+		go mpqs_worker(n, amin, fb, results, seeds)
 	}
 
 	// process results
 	for {
-		r := <-results
-		x := r.x
-		factors := r.factors
-		remainder := r.remainder
-		/*
-			fmt.Printf("%d*%d^2+%d*%d+%d=%d=", a, x, b, x, c, a.Mul(x).Add(b).Mul(x).Add(c))
-			for i, f := range factors {
-				if i != 0 {
-					fmt.Printf("·")
-				}
-				fmt.Printf("%d", fb[f])
-			}
+		rs := <-results
+		for _, r := range rs {
+			x := r.x
+			factors := r.factors
+			remainder := r.remainder
 			if remainder != 1 {
-				fmt.Printf("·%d", remainder)
-			}
-			fmt.Println()
-		*/
-		if remainder != 1 {
-			// try to find another record with the same largeprime
-			lr, ok := largeprimes[remainder]
-			if !ok {
-				// haven't seen this large prime yet.  Save record for later
-				largeprimes[remainder] = largerecord{x, factors}
-				continue
-			}
-			// combine current equation with other largeprime equation
-			// x1^2 === prod(f1) * largeprime
-			// x2^2 === prod(f2) * largeprime
-			//fmt.Printf("  largeprime %d match\n", remainder)
-			x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could remainder divide n?
-			factors = append(factors, lr.f...)
-		}
-
-		// Add equation to the matrix
-		idlist := m.AddRow(factors, eqn{x, factors})
-		if idlist == nil {
-			if m.Rows()%100 == 0 {
-				logger.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), falsepos, len(largeprimes))
-				falsepos = 0
-			}
-			continue
-		}
-
-		// We found a set of equations with all even powers.
-		// Compute a and b where a^2 === b^2 mod n
-		a := big.One
-		b := big.One
-		odd := make([]bool, len(fb))
-		for _, id := range idlist {
-			e := id.(eqn)
-			a = a.Mul(e.x).Mod(n)
-			for _, i := range e.f {
-				if !odd[i] {
-					// first occurrence of this factor
-					odd[i] = true
+				// try to find another record with the same largeprime
+				lr, ok := largeprimes[remainder]
+				if !ok {
+					// haven't seen this large prime yet.  Save record for later
+					largeprimes[remainder] = largerecord{x, factors}
 					continue
 				}
-				// second occurrence of this factor
-				b = b.Mul64(fb[i]).Mod(n)
-				odd[i] = false
+				// combine current equation with other largeprime equation
+				// x1^2 === prod(f1) * largeprime
+				// x2^2 === prod(f2) * largeprime
+				//fmt.Printf("  largeprime %d match\n", remainder)
+				x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could remainder divide n?
+				factors = append(factors, lr.f...)
 			}
-		}
-		for _, o := range odd {
-			if o {
-				panic("gauss elim failed")
+
+			// Add equation to the matrix
+			idlist := m.AddRow(factors, eqn{x, factors})
+			if idlist == nil {
+				if m.Rows()%100 == 0 {
+					logger.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), falsepos, len(largeprimes))
+					falsepos = 0
+				}
+				continue
 			}
-		}
 
-		if a.Cmp(b) == 0 {
-			// trivial equation, ignore it
-			logger.Println("triv A")
-			continue
-		}
-		if a.Add(b).Cmp(n) == 0 {
-			// trivial equation, ignore it
-			logger.Println("triv B")
-			continue
-		}
-		f := a.Add(b).GCD(n)
-		res := []big.Int{f, n.Div(f)}
-
-		// shut down workers
-		close(stop)
-
-		// drain results, look for ack from workers
-		for k := 0; k < workers; {
-			r := <-results
-			if r.remainder == 0 {
-				// worker returned "I'm done" sentinel.
-				k++
+			// We found a set of equations with all even powers.
+			// Compute a and b where a^2 === b^2 mod n
+			a := big.One
+			b := big.One
+			odd := make([]bool, len(fb))
+			for _, id := range idlist {
+				e := id.(eqn)
+				a = a.Mul(e.x).Mod(n)
+				for _, i := range e.f {
+					if !odd[i] {
+						// first occurrence of this factor
+						odd[i] = true
+						continue
+					}
+					// second occurrence of this factor
+					b = b.Mul64(fb[i]).Mod(n)
+					odd[i] = false
+				}
 			}
+			for _, o := range odd {
+				if o {
+					panic("gauss elim failed")
+				}
+			}
+
+			if a.Cmp(b) == 0 {
+				// trivial equation, ignore it
+				logger.Println("triv A")
+				continue
+			}
+			if a.Add(b).Cmp(n) == 0 {
+				// trivial equation, ignore it
+				logger.Println("triv B")
+				continue
+			}
+			f := a.Add(b).GCD(n)
+			res := []big.Int{f, n.Div(f)}
+
+			// Tell workers to stop.
+			close(seeds)
+
+			return res, nil
 		}
-		return res, nil
+		// Add a new task for the just-finished worker to do.
+		seeds <- rnd.Int63()
 	}
 }
 
-func mpqs_worker(n big.Int, amin big.Int, fb []int64, res chan sieveResult, stop chan struct{}, seed int64) {
-	rnd := rand.New(rand.NewSource(seed))
+func mpqs_worker(n big.Int, amin big.Int, fb []int64, res chan []sieveResult, seeds chan int64) {
 	for {
-		select {
-		case <-stop:
-			res <- sieveResult{}
-			return
-		default:
+		seed, ok := <-seeds
+		if !ok {
+			break
 		}
+		rnd := rand.New(rand.NewSource(seed))
 
 		// Pick an a.  Use a random product of factor base primes
 		// that multiply to at least amin.
 		af := map[uint]uint{}
 		a := big.One
 		for a.Cmp(amin) < 0 {
-			f := uint(1 + rand.Intn(len(fb)-1))
+			f := uint(1 + rnd.Intn(len(fb)-1))
 			af[f] += 1
 			a = a.Mul64(fb[f])
 		}
@@ -218,6 +200,7 @@ func mpqs_worker(n big.Int, amin big.Int, fb []int64, res chan sieveResult, stop
 		// Find best point to sieve around
 		x0 := n.SqrtCeil().Sub(b).Div(a)
 
+		var rs []sieveResult
 		for _, r := range sievesmooth(a, b.Lsh(1), c, fb, x0.Sub64(sieverange/2), rnd) {
 			r.x = a.Mul(r.x).Add(b)
 			for f, k := range af {
@@ -225,12 +208,8 @@ func mpqs_worker(n big.Int, amin big.Int, fb []int64, res chan sieveResult, stop
 					r.factors = append(r.factors, f)
 				}
 			}
-			select {
-			case res <- r:
-			case <-stop:
-				res <- sieveResult{} // "I'm done" sentinel
-				return
-			}
+			rs = append(rs, r)
 		}
+		res <- rs
 	}
 }
