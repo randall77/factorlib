@@ -13,16 +13,16 @@ func init() {
 	factorizers["qs"] = qs
 }
 
-func qs(n big.Int, rnd *rand.Rand) []big.Int {
+func qs(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
 	// qs does not work for powers of a single prime.  Check that first.
-	if f := primepower(n, rnd); f != nil {
-		return f
+	if f, err := primepower(n, rnd); err == nil {
+		return f, nil
 	}
 
 	// first, pick a factor base
 	fb, a := makeFactorBase(n)
 	if a != 0 {
-		return []big.Int{big.Int64(a), n.Div64(a)}
+		return []big.Int{big.Int64(a), n.Div64(a)}, nil
 	}
 
 	// matrix is used to do gaussian elimination on mod 2 exponents.
@@ -118,7 +118,7 @@ func qs(n big.Int, rnd *rand.Rand) []big.Int {
 			}
 
 			r := a.Add(b).GCD(n)
-			return []big.Int{r, n.Div(r)}
+			return []big.Int{r, n.Div(r)}, nil
 		}
 		x0 = x0.Add64(sieverange)
 	}

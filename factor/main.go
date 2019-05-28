@@ -3,13 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/randall77/factorlib"
-	"github.com/randall77/factorlib/big"
 	"log"
 	"math/rand"
 	"os"
 	"runtime/pprof"
 	"strconv"
+
+	"github.com/randall77/factorlib"
+	"github.com/randall77/factorlib/big"
 )
 
 var seed = flag.Int64("seed", 0, "seed for RNG")
@@ -80,10 +81,18 @@ func main() {
 	}
 
 	// Call into main library to do factoring
-	log.Printf("factoring %d using algorithm %s\n", n, *alg)
-	factors := factorlib.Factor(n, *alg, rnd)
+	var algstr string
+	if *alg != "" {
+		algstr = fmt.Sprintf(" using algorithm %s", *alg)
+	}
+	log.Printf("factoring %d%s\n", n, algstr)
+	factors, err := factorlib.Factor(n, *alg, rnd)
 
 	// Print result
+	if err != nil {
+		fmt.Printf("factorization failed: %s\n", err)
+		return
+	}
 	fmt.Printf("%d = ", n)
 	for i, f := range factors {
 		if i > 0 {

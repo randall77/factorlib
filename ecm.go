@@ -1,9 +1,10 @@
 package factorlib
 
 import (
+	"math/rand"
+
 	"github.com/randall77/factorlib/big"
 	"github.com/randall77/factorlib/primes"
-	"math/rand"
 )
 
 // see http://en.wikipedia.org/wiki/Lenstra_elliptic_curve_factorization
@@ -116,10 +117,10 @@ func (p point) Mul(k int64, n, a big.Int) point {
 	return q.Add(p, n, a)
 }
 
-func ecm(n big.Int, rnd *rand.Rand) (r []big.Int) {
+func ecm(n big.Int, rnd *rand.Rand) (r []big.Int, err error) {
 	// ecm does not work for powers of a single prime.  Check that first.
-	if f := primepower(n, rnd); f != nil {
-		return f
+	if f, err := primepower(n, rnd); err == nil {
+		return f, nil
 	}
 
 	// somewhere in the guts of the ecm routine we panic a factor of n and

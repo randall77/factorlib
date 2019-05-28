@@ -1,9 +1,11 @@
 package factorlib
 
 import (
+	"fmt"
+	"math/rand"
+
 	"github.com/randall77/factorlib/big"
 	"github.com/randall77/factorlib/primes"
-	"math/rand"
 )
 
 func init() {
@@ -12,21 +14,21 @@ func init() {
 	factorizers["primepower"] = primepower
 }
 
-// If n is a prime power, factor n.  Otherwise, return nil.
-func primepower(n big.Int, rnd *rand.Rand) []big.Int {
+// If n is a prime power, factor n.  Otherwise, return nil and an error.
+func primepower(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
 	// there is probably a faster way, but this is fast enough.
 	for i := 0; ; i++ {
 		p := primes.Get(i)
 		x := root(n, p)
 		if x.Cmp(big.One) <= 0 {
-			return nil
+			return nil, fmt.Errorf("%d not a prime power", n)
 		}
 		if x.Exp(p).Cmp(n) == 0 {
 			var a []big.Int
 			for j := int64(0); j < p; j++ {
 				a = append(a, x)
 			}
-			return a
+			return a, nil
 		}
 	}
 }

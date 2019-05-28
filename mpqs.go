@@ -1,11 +1,12 @@
 package factorlib
 
 import (
-	"github.com/randall77/factorlib/big"
-	"github.com/randall77/factorlib/linear"
 	"log"
 	"math/rand"
 	"runtime"
+
+	"github.com/randall77/factorlib/big"
+	"github.com/randall77/factorlib/linear"
 )
 
 func init() {
@@ -41,16 +42,16 @@ func init() {
 //           = (am + 2sqrt(n)) m
 // choose a <= 2sqrt(n)/m, after that f(x0+m)/a starts growing linearly with a.
 
-func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
+func mpqs(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
 	// mpqs does not work for powers of a single prime.  Check that first.
-	if f := primepower(n, rnd); f != nil {
-		return f
+	if f, err := primepower(n, rnd); err == nil {
+		return f, nil
 	}
 
 	// Pick a factor base
 	fb, a := makeFactorBase(n)
 	if a != 0 {
-		return []big.Int{big.Int64(a), n.Div64(a)}
+		return []big.Int{big.Int64(a), n.Div64(a)}, nil
 	}
 
 	maxp := fb[len(fb)-1]
@@ -74,7 +75,7 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 	// channels to communicate with workers
 	results := make(chan sieveResult, 100)
 	stop := make(chan struct{})
-	
+
 	// spawn workers which find smooth relations
 	workers := runtime.NumCPU() // TODO: set up as a parameter somehow?
 	log.Printf("workers: %d\n", workers)
@@ -84,22 +85,22 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 
 	// process results
 	for {
-		r := <- results
+		r := <-results
 		x := r.x
 		factors := r.factors
 		remainder := r.remainder
 		/*
-		fmt.Printf("%d*%d^2+%d*%d+%d=%d=", a, x, b, x, c, a.Mul(x).Add(b).Mul(x).Add(c))
-		for i, f := range factors {
-			if i != 0 {
-				fmt.Printf("·")
+			fmt.Printf("%d*%d^2+%d*%d+%d=%d=", a, x, b, x, c, a.Mul(x).Add(b).Mul(x).Add(c))
+			for i, f := range factors {
+				if i != 0 {
+					fmt.Printf("·")
+				}
+				fmt.Printf("%d", fb[f])
 			}
-			fmt.Printf("%d", fb[f])
-		}
-		if remainder != 1 {
-			fmt.Printf("·%d", remainder)
-		}
-		fmt.Println()
+			if remainder != 1 {
+				fmt.Printf("·%d", remainder)
+			}
+			fmt.Println()
 		*/
 		if remainder != 1 {
 			// try to find another record with the same largeprime
@@ -116,7 +117,7 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 			x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could remainder divide n?
 			factors = append(factors, lr.f...)
 		}
-		
+
 		// Add equation to the matrix
 		idlist := m.AddRow(factors, eqn{x, factors})
 		if idlist == nil {
@@ -126,7 +127,7 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 			}
 			continue
 		}
-		
+
 		// We found a set of equations with all even powers.
 		// Compute a and b where a^2 === b^2 mod n
 		a := big.One
@@ -151,7 +152,7 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 				panic("gauss elim failed")
 			}
 		}
-		
+
 		if a.Cmp(b) == 0 {
 			// trivial equation, ignore it
 			log.Println("triv A")
@@ -164,19 +165,19 @@ func mpqs(n big.Int, rnd *rand.Rand) []big.Int {
 		}
 		f := a.Add(b).GCD(n)
 		res := []big.Int{f, n.Div(f)}
-		
+
 		// shut down workers
 		close(stop)
 
 		// drain results, look for ack from workers
 		for k := 0; k < workers; {
-			r := <- results
+			r := <-results
 			if r.remainder == 0 {
 				// worker returned "I'm done" sentinel.
 				k++
 			}
 		}
-		return res
+		return res, nil
 	}
 }
 
@@ -184,7 +185,7 @@ func mpqs_worker(n big.Int, amin big.Int, fb []int64, res chan sieveResult, stop
 	rnd := rand.New(rand.NewSource(seed))
 	for {
 		select {
-		case <- stop:
+		case <-stop:
 			res <- sieveResult{}
 			return
 		default:
@@ -199,20 +200,20 @@ func mpqs_worker(n big.Int, amin big.Int, fb []int64, res chan sieveResult, stop
 			af[f] += 1
 			a = a.Mul64(fb[f])
 		}
-		
+
 		// Pick b = sqrt(n) mod a
 		var pp []primePower
 		for i, k := range af {
 			pp = append(pp, primePower{fb[i], k})
 		}
 		b := bigSqrtModN(n.Mod(a), pp, rnd)
-		
+
 		// Set c = (b^2-n)/a
 		c := b.Square().Sub(n).Div(a)
-		
+
 		// Find best point to sieve around
 		x0 := n.SqrtCeil().Sub(b).Div(a)
-		
+
 		for _, r := range sievesmooth(a, b.Lsh(1), c, fb, x0.Sub64(sieverange/2), rnd) {
 			r.x = a.Mul(r.x).Add(b)
 			for f, k := range af {
@@ -222,7 +223,7 @@ func mpqs_worker(n big.Int, amin big.Int, fb []int64, res chan sieveResult, stop
 			}
 			select {
 			case res <- r:
-			case <- stop:
+			case <-stop:
 				res <- sieveResult{}
 				return
 			}

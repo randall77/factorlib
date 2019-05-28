@@ -2,35 +2,31 @@ package factorlib
 
 import (
 	"fmt"
-	"github.com/randall77/factorlib/big"
 	"math/rand"
 	"sort"
+	"strings"
+
+	"github.com/randall77/factorlib/big"
 )
 
 // Set of factoring algorithms to choose from.
 // Algorithms can add themselves here in an initializer.
 // Eventually, we should choose one automagically.
-var factorizers = map[string]func(big.Int, *rand.Rand) []big.Int{}
+var factorizers = map[string]func(big.Int, *rand.Rand) ([]big.Int, error){}
 
 // Factor returns the prime factorization of n.
 // alg is a hint about which factoring algorithm to choose.
 // rnd is a random source for use by the factoring algorithm.
-func Factor(n big.Int, alg string, rnd *rand.Rand) []big.Int {
+func Factor(n big.Int, alg string, rnd *rand.Rand) ([]big.Int, error) {
 	// figure out the algorithm to use
 	split := factorizers[alg]
 	if split == nil {
-		// TODO: better error
 		var algs []string
 		for k, _ := range factorizers {
 			algs = append(algs, k)
 		}
 		sort.Strings(algs)
-		fmt.Printf("unknown algorithm: %s\n", alg)
-		fmt.Println("possible algorithms:")
-		for _, s := range algs {
-			fmt.Printf("  %s\n", s)
-		}
-		return nil
+		return nil, fmt.Errorf("unknown algorithm: %s (possible algorithms: %s)", alg, strings.Join(algs, ", "))
 	}
 
 	// Main loop.  Keep splitting factors until they are all prime.
@@ -47,7 +43,10 @@ func Factor(n big.Int, alg string, rnd *rand.Rand) []big.Int {
 		// Otherwise, find a nontrivial factorization of it.
 		// This is the main call from the driver into
 		// the specific factoring algorithm chosen.
-		d := split(f, rnd)
+		d, err := split(f, rnd)
+		if err != nil {
+			return nil, err
+		}
 
 		// check answer
 		m := big.One
@@ -77,7 +76,7 @@ func Factor(n big.Int, alg string, rnd *rand.Rand) []big.Int {
 	if m.Cmp(n) != 0 {
 		panic("factorization failed")
 	}
-	return factors
+	return factors, nil
 }
 
 // sort *big.Int in nondecreasing order
