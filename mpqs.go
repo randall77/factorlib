@@ -15,6 +15,8 @@ func init() {
 
 // mpqs = Multiple Polynomial Quadratic Sieve
 //
+// First, read the description of the regular Quadratic Sieve in qs.go.
+//
 // define f(x) = (ax+b)^2 - n
 //
 // f(x) = a^2x^2+2abx+b^2-n
@@ -32,7 +34,7 @@ func init() {
 // factor from f(x).  But a larger a also mean f(x) grows faster as x
 // diverges from x0.  Pick a so that f(x0+m)/a is minimal when sieving
 // [-m,m].
-
+//
 // f(x0+m)/a = (a^2(x0+m)^2 + 2ab(x0+m) + b^2-n)/a
 //           = a(x0+m)^2 + 2b(x0+m) + c
 //           = ax0^2+2ax0m+am^2+2bx0+2bm+c
@@ -41,6 +43,8 @@ func init() {
 //           = (am + 2sqrt(n) - 2b + 2b) m
 //           = (am + 2sqrt(n)) m
 // choose a <= 2sqrt(n)/m, after that f(x0+m)/a starts growing linearly with a.
+//
+//
 
 func mpqs(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	// mpqs does not work for powers of a single prime.  Check that first.
@@ -224,7 +228,7 @@ func mpqs_worker(n big.Int, amin big.Int, fb []int64, res chan sieveResult, stop
 			select {
 			case res <- r:
 			case <-stop:
-				res <- sieveResult{}
+				res <- sieveResult{} // "I'm done" sentinel
 				return
 			}
 		}

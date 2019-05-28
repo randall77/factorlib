@@ -65,7 +65,7 @@ func (m *Matrix) AddRow(idxs []uint, id interface{}) []interface{} {
 			a = append(a, m.ids[i])
 		}
 	}
-	// Note: we don't add this vector to the list of rows, as it
+	// Note: we don't add this new vector to the m.rows, as it
 	// is linearly dependent.
 	return a
 }
