@@ -42,9 +42,9 @@ func init() {
 //           = (am + 2sqrt(n)) m
 // choose a <= 2sqrt(n)/m, after that f(x0+m)/a starts growing linearly with a.
 
-func mpqs(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
+func mpqs(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	// mpqs does not work for powers of a single prime.  Check that first.
-	if f, err := primepower(n, rnd); err == nil {
+	if f, err := primepower(n, rnd, logger); err == nil {
 		return f, nil
 	}
 
@@ -78,7 +78,7 @@ func mpqs(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
 
 	// spawn workers which find smooth relations
 	workers := runtime.NumCPU() // TODO: set up as a parameter somehow?
-	log.Printf("workers: %d\n", workers)
+	logger.Printf("workers: %d\n", workers)
 	for i := 0; i < workers; i++ {
 		go mpqs_worker(n, amin, fb, results, stop, rnd.Int63())
 	}
@@ -122,7 +122,7 @@ func mpqs(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
 		idlist := m.AddRow(factors, eqn{x, factors})
 		if idlist == nil {
 			if m.Rows()%100 == 0 {
-				log.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), falsepos, len(largeprimes))
+				logger.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), falsepos, len(largeprimes))
 				falsepos = 0
 			}
 			continue
@@ -155,12 +155,12 @@ func mpqs(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
 
 		if a.Cmp(b) == 0 {
 			// trivial equation, ignore it
-			log.Println("triv A")
+			logger.Println("triv A")
 			continue
 		}
 		if a.Add(b).Cmp(n) == 0 {
 			// trivial equation, ignore it
-			log.Println("triv B")
+			logger.Println("triv B")
 			continue
 		}
 		f := a.Add(b).GCD(n)

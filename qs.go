@@ -13,9 +13,9 @@ func init() {
 	factorizers["qs"] = qs
 }
 
-func qs(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
+func qs(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	// qs does not work for powers of a single prime.  Check that first.
-	if f, err := primepower(n, rnd); err == nil {
+	if f, err := primepower(n, rnd, logger); err == nil {
 		return f, nil
 	}
 
@@ -37,7 +37,7 @@ func qs(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
 
 	x0 := n.SqrtCeil()
 	for {
-		//log.Printf("sieving at %d\n", x0)
+		//logger.Printf("sieving at %d\n", x0)
 		for _, r := range sievesmooth(big.Int64(1), big.Int64(0), n.Neg(), fb, x0, rnd) {
 			x := r.x
 			factors := r.factors
@@ -75,7 +75,7 @@ func qs(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
 			idlist := m.AddRow(factors, eqn{x, factors})
 			if idlist == nil {
 				if m.Rows()%100 == 0 {
-					log.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), falsepos, len(largeprimes))
+					logger.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), falsepos, len(largeprimes))
 					falsepos = 0
 				}
 				continue
@@ -108,12 +108,12 @@ func qs(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
 
 			if a.Cmp(b) == 0 {
 				// trivial equation, ignore it
-				log.Println("triv A")
+				logger.Println("triv A")
 				continue
 			}
 			if a.Add(b).Cmp(n) == 0 {
 				// trivial equation, ignore it
-				log.Println("triv B")
+				logger.Println("triv B")
 				continue
 			}
 

@@ -1,6 +1,7 @@
 package factorlib
 
 import (
+	"log"
 	"math/rand"
 
 	"github.com/randall77/factorlib/big"
@@ -12,7 +13,7 @@ func init() {
 }
 
 // trial tries dividing by 2,3,5,7,11,... until a factor is found.
-func trial(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
+func trial(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	s := &big.Scratch{}
 	for i := 0; ; i++ {
 		p := primes.Get(i)

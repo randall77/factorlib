@@ -44,14 +44,14 @@ func sievesmooth(a, b, c big.Int, fb []int64, x0 big.Int, rnd *rand.Rand) []siev
 	// Compute scaling factor for logarithms
 	// Note: we assume that the maximum f(x) is achieved at one of the endpoints of the sieve range.
 	y0 := a.Mul(x0).Add(b).Mul(x0).Add(c).Abs()
-	x1 := x0.Add64(sieverange-1)
+	x1 := x0.Add64(sieverange - 1)
 	y1 := a.Mul(x1).Add(b).Mul(x1).Add(c).Abs()
 	maxf := y0
 	if y1.Cmp(maxf) > 0 {
 		maxf = y1
 	}
-	scale := 255/maxf.Log()
-	
+	scale := 255 / maxf.Log()
+
 	// find starting points
 	si := makeSieveInfo(a, b, c, fb, x0, scale, rnd)
 
@@ -66,7 +66,7 @@ func sievesmooth(a, b, c big.Int, fb []int64, x0 big.Int, rnd *rand.Rand) []siev
 		if y1.Cmp(m) > 0 {
 			m = y1
 		}
-		thresholds[i/window] = byte(scale * (m.Log() - 2 * math.Log(float64(maxp))))
+		thresholds[i/window] = byte(scale * (m.Log() - 2*math.Log(float64(maxp))))
 	}
 
 	// sieve to find any potential smooth f(x)
@@ -238,13 +238,13 @@ func sieveinner(si []sieveinfo, thresholds []byte) []int {
 		b.num++
 	}
 	/*
-		log.Printf("len(si)=%d, len(small)=%d", len(si), len(small))
+		logger.Printf("len(si)=%d, len(small)=%d", len(si), len(small))
 		for i := 0; i < nw; i++ {
 			n := 0
 			for b := large[i]; b != nil; b = b.next {
 				n += b.num
 			}
-			log.Printf("len(large[%d])=%d", i, n)
+			logger.Printf("len(large[%d])=%d", i, n)
 		}
 	*/
 

@@ -2,6 +2,7 @@ package factorlib
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"sort"
 	"strings"
@@ -12,12 +13,12 @@ import (
 // Set of factoring algorithms to choose from.
 // Algorithms can add themselves here in an initializer.
 // Eventually, we should choose one automagically.
-var factorizers = map[string]func(big.Int, *rand.Rand) ([]big.Int, error){}
+var factorizers = map[string]func(big.Int, *rand.Rand, *log.Logger) ([]big.Int, error){}
 
 // Factor returns the prime factorization of n.
 // alg is a hint about which factoring algorithm to choose.
 // rnd is a random source for use by the factoring algorithm.
-func Factor(n big.Int, alg string, rnd *rand.Rand) ([]big.Int, error) {
+func Factor(n big.Int, alg string, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	// figure out the algorithm to use
 	split := factorizers[alg]
 	if split == nil {
@@ -55,7 +56,7 @@ func Factor(n big.Int, alg string, rnd *rand.Rand) ([]big.Int, error) {
 		// Otherwise, find a nontrivial factorization of it.
 		// This is the main call from the driver into
 		// the specific factoring algorithm chosen.
-		d, err := split(f, rnd)
+		d, err := split(f, rnd, logger)
 		if err != nil {
 			return nil, err
 		}

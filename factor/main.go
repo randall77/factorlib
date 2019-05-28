@@ -121,7 +121,7 @@ func main() {
 	if *alg != "" {
 		logger.Printf("using algorithm %s", *alg)
 	}
-	factors, err := factorlib.Factor(n, *alg, rnd)
+	factors, err := factorlib.Factor(n, *alg, rnd, logger)
 
 	// Print result
 	if err != nil {

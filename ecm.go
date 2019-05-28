@@ -1,6 +1,7 @@
 package factorlib
 
 import (
+	"log"
 	"math/rand"
 
 	"github.com/randall77/factorlib/big"
@@ -117,9 +118,9 @@ func (p point) Mul(k int64, n, a big.Int) point {
 	return q.Add(p, n, a)
 }
 
-func ecm(n big.Int, rnd *rand.Rand) (r []big.Int, err error) {
+func ecm(n big.Int, rnd *rand.Rand, logger *log.Logger) (r []big.Int, err error) {
 	// ecm does not work for powers of a single prime.  Check that first.
-	if f, err := primepower(n, rnd); err == nil {
+	if f, err := primepower(n, rnd, logger); err == nil {
 		return f, nil
 	}
 

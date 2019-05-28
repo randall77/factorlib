@@ -2,6 +2,7 @@ package factorlib
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 
 	"github.com/randall77/factorlib/big"
@@ -15,7 +16,7 @@ func init() {
 }
 
 // If n is a prime power, factor n.  Otherwise, return nil and an error.
-func primepower(n big.Int, rnd *rand.Rand) ([]big.Int, error) {
+func primepower(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	// there is probably a faster way, but this is fast enough.
 	for i := 0; ; i++ {
 		p := primes.Get(i)
