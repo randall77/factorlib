@@ -29,10 +29,22 @@ func Factor(n big.Int, alg string, rnd *rand.Rand) ([]big.Int, error) {
 		return nil, fmt.Errorf("unknown algorithm: %s (possible algorithms: %s)", alg, strings.Join(algs, ", "))
 	}
 
+	if n.IsZero() {
+		return []big.Int{big.Zero}, nil
+	}
+
 	// Main loop.  Keep splitting factors until they are all prime.
 	factors := []big.Int{n}
 	for i := 0; i < len(factors); {
 		f := factors[i]
+
+		// Handle the unit factor -1 specially.
+		if f.Sign() < 0 {
+			factors[i] = big.MinusOne
+			factors = append(factors, f.Neg())
+			i++
+			continue
+		}
 
 		// If the current factor is prime, leave it in the list.
 		if f.ProbablyPrime(1000) {
@@ -53,6 +65,9 @@ func Factor(n big.Int, alg string, rnd *rand.Rand) ([]big.Int, error) {
 		for _, x := range d {
 			if x.Cmp(big.One) == 0 || x.Cmp(f) == 0 {
 				panic("trivial factor")
+			}
+			if x.Cmp(big.One) < 0 || x.Cmp(f) > 0 {
+				panic("bad factor")
 			}
 			m = m.Mul(x)
 		}

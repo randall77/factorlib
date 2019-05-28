@@ -245,5 +245,6 @@ var One = Int64(1)
 var Two = Int64(2)
 var Three = Int64(3)
 var Ten = Int64(10)
+var MinusOne = Int64(-1)
 
 var minInt64 = Int64(math.MinInt64)
