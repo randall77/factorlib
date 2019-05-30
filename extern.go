@@ -8,22 +8,33 @@ import (
 	"strings"
 
 	"github.com/randall77/factorlib/big"
+	"github.com/randall77/factorlib/ecm"
+	"github.com/randall77/factorlib/mpqs"
+	"github.com/randall77/factorlib/primepower"
+	"github.com/randall77/factorlib/qs"
+	"github.com/randall77/factorlib/trial"
 )
 
 // Set of factoring algorithms to choose from.
 // Algorithms can add themselves here in an initializer.
 // Eventually, we should choose one automagically.
-var factorizers = map[string]func(big.Int, *rand.Rand, *log.Logger) ([]big.Int, error){}
+var Factorizers = map[string]func(big.Int, *rand.Rand, *log.Logger) ([]big.Int, error){
+	"trial":      trial.Factor,
+	"primepower": primepower.Factor,
+	"ecm":        ecm.Factor,
+	"qs":         qs.Factor,
+	"mpqs":       mpqs.Factor,
+}
 
 // Factor returns the prime factorization of n.
 // alg is a hint about which factoring algorithm to choose.
 // rnd is a random source for use by the factoring algorithm.
 func Factor(n big.Int, alg string, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	// figure out the algorithm to use
-	split := factorizers[alg]
+	split := Factorizers[alg]
 	if split == nil {
 		var algs []string
-		for k, _ := range factorizers {
+		for k, _ := range Factorizers {
 			algs = append(algs, k)
 		}
 		sort.Strings(algs)

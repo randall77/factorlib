@@ -1,4 +1,4 @@
-package factorlib
+package trial
 
 import (
 	"log"
@@ -8,12 +8,8 @@ import (
 	"github.com/randall77/factorlib/primes"
 )
 
-func init() {
-	factorizers["trial"] = trial
-}
-
 // trial tries dividing by 2,3,5,7,11,... until a factor is found.
-func trial(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
+func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	s := &big.Scratch{}
 	for i := 0; ; i++ {
 		p := primes.Get(i)

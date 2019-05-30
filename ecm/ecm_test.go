@@ -1,8 +1,9 @@
-package factorlib
+package ecm
 
 import (
-	"github.com/randall77/factorlib/big"
 	"testing"
+
+	"github.com/randall77/factorlib/big"
 )
 
 func TestElliptic(t *testing.T) {

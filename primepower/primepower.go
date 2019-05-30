@@ -1,4 +1,4 @@
-package factorlib
+package primepower
 
 import (
 	"fmt"
@@ -9,14 +9,8 @@ import (
 	"github.com/randall77/factorlib/primes"
 )
 
-func init() {
-	// Note: this isn't a complete algorithm, so it will
-	// cause the driver to fail if n is not a prime power.
-	factorizers["primepower"] = primepower
-}
-
 // If n is a prime power, factor n.  Otherwise, return nil and an error.
-func primepower(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
+func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	// there is probably a faster way, but this is fast enough.
 	for i := 0; ; i++ {
 		p := primes.Get(i)

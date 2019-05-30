@@ -1,4 +1,4 @@
-package factorlib
+package qs
 
 import (
 	"log"
@@ -6,12 +6,11 @@ import (
 
 	"github.com/randall77/factorlib/big"
 	"github.com/randall77/factorlib/linear"
+	"github.com/randall77/factorlib/math"
+	"github.com/randall77/factorlib/primepower"
 	"github.com/randall77/factorlib/primes"
+	"github.com/randall77/factorlib/sieve"
 )
-
-func init() {
-	factorizers["qs"] = qs
-}
 
 // The quadratic sieve is a general purpose factoring algorithm.
 // It works by trying to find two numbers a, b satisfying:
@@ -20,7 +19,7 @@ func init() {
 //
 // Once we have found such a, b, we can rearrange equation (1) to get:
 //   (a-b)(a+b) == 0 mod n
-// A "good" pair of a, b have a != b and a+b != n.
+// A "good" pair of a, b has a != b and a+b != n.
 // From any good pair satisfying (1) we can get a nontrivial factor of n
 // by computing gcd(a+b, n). Why? If we have a good pair, then
 //   a+b is not a multiple of n (a+b>0, a+b!=n, and a+b<2n).
@@ -29,7 +28,7 @@ func init() {
 //
 // The chances of a random a, b satisfying (1) being "good" is at least ~1/2.
 // So we only need to produce a constant number of a, b pairs before we expect
-// to find a factor of n. (Not that we'll be producing a, b randomly, but
+// to find a factor of n. (Not that we won't be producing a, b randomly, but
 // as a practical matter we see the same behavior as if they were.)
 //
 // For instance, for n=527, we might get a=3 and b=65, because
@@ -42,16 +41,16 @@ func init() {
 // Or equivalently,
 //   x^2 == p1 · p2 · ... · pk mod n
 // If we have the above equality for two different x, then we can
-// generate another equality by multiplying each side of the two
-// equalities (multiplying the x's on the left-hand side and adding
-// the powers of matching primes on the right-hand side).
+// generate another equality by multiplying the two equalities
+// (multiplying the x's on the left-hand side and adding the powers
+// of matching primes on the right-hand side).
 //
 // If we can find a set of these equations where, when combined as
 // above, all the powers of the primes on the right-hand side are
 // even, then we can define a to be the product of all of the x's mod
 // n, and b to be the square root of the product of all the primes on
-// the right-hand side (the square root is easy to compute by just
-// dividing all the prime powers by 2).
+// the right-hand side, mod n (the square root is easy to compute by
+// just dividing all exponents of the prime powers by 2).
 
 // For our 527 example, we'll get something like:
 //   23^2 - 527 = 2
@@ -88,9 +87,9 @@ func init() {
 // then that value is also a prime factor of x^2-n. So we can get effectively
 // square the maximum factor base prime using this technique (or equivalently,
 // sieve with only primes up to the square root of the max factor base prime).
-func qs(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
+func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	// qs does not work for powers of a single prime.  Check that first.
-	if f, err := primepower(n, rnd, logger); err == nil {
+	if f, err := primepower.Factor(n, rnd, logger); err == nil {
 		return f, nil
 	}
 
@@ -112,11 +111,12 @@ func qs(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 
 	x0 := n.SqrtCeil()
 	for {
+		x1 := x0.Add64(1 << 24) // TODO: paramaterize?
 		//logger.Printf("sieving at %d\n", x0)
-		for _, r := range sievesmooth(big.Int64(1), big.Int64(0), n.Neg(), fb, x0, rnd) {
-			x := r.x
-			factors := r.factors
-			remainder := r.remainder
+		for _, r := range sieve.Smooth(big.Int64(1), big.Int64(0), n.Neg(), fb, x0, x1, rnd) {
+			x := r.X
+			factors := r.Factors
+			remainder := r.Remainder
 			/*
 				fmt.Printf("%d^2-%d=%d=", x, n, x.Mul(x).Sub(n))
 				for i, f := range factors {
@@ -150,8 +150,8 @@ func qs(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 			idlist := m.AddRow(factors, eqn{x, factors})
 			if idlist == nil {
 				if m.Rows()%100 == 0 {
-					logger.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), falsepos, len(largeprimes))
-					falsepos = 0
+					logger.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), sieve.FalsePos(), len(largeprimes))
+					sieve.ClearFalsePos()
 				}
 				continue
 			}
@@ -195,7 +195,7 @@ func qs(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 			r := a.Add(b).GCD(n)
 			return []big.Int{r, n.Div(r)}, nil
 		}
-		x0 = x0.Add64(sieverange)
+		x0 = x1
 	}
 }
 
@@ -222,17 +222,11 @@ func makeFactorBase(n big.Int) ([]int64, int64) {
 		if a == 0 {
 			return nil, p
 		}
-		if quadraticResidue(a, p) {
+		if math.QuadraticResidue(a, p) {
 			// if x^2 == n mod p has no solutions, then
 			// x^2-n will never be divisible by p.  So it
 			// doesn't need to be in the factor base.
 			fb = append(fb, p)
 		}
 	}
-}
-
-func dup(x []uint) []uint {
-	y := make([]uint, len(x))
-	copy(y, x)
-	return y
 }

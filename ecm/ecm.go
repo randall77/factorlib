@@ -1,10 +1,11 @@
-package factorlib
+package ecm
 
 import (
 	"log"
 	"math/rand"
 
 	"github.com/randall77/factorlib/big"
+	"github.com/randall77/factorlib/primepower"
 	"github.com/randall77/factorlib/primes"
 )
 
@@ -48,10 +49,6 @@ import (
 // with lots of small factors.  If we reach the 0 element, then choose
 // a new a and try again.  If the divide fails, we've found a factor
 // of n.
-
-func init() {
-	factorizers["ecm"] = ecm
-}
 
 // we use the elliptic curve y^2 = x^3 + ax + 1 for a random a in Z_n
 type point struct {
@@ -118,9 +115,9 @@ func (p point) Mul(k int64, n, a big.Int) point {
 	return q.Add(p, n, a)
 }
 
-func ecm(n big.Int, rnd *rand.Rand, logger *log.Logger) (r []big.Int, err error) {
+func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) (r []big.Int, err error) {
 	// ecm does not work for powers of a single prime.  Check that first.
-	if f, err := primepower(n, rnd, logger); err == nil {
+	if f, err := primepower.Factor(n, rnd, logger); err == nil {
 		return f, nil
 	}
 

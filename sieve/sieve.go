@@ -1,4 +1,4 @@
-package factorlib
+package sieve
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"math/rand"
 
 	"github.com/randall77/factorlib/big"
+	fmath "github.com/randall77/factorlib/math"
 )
 
 // width of window to sieve at once.  TODO: make configurable?
@@ -23,28 +24,30 @@ const checkFalseNegative = false
 // TODO: do this more systematically
 var falsepos int
 
+func FalsePos() int  { return falsepos }
+func ClearFalsePos() { falsepos = 0 }
+
 // Records f(x) == product(factors)*remainder
 // The values in the factors slice are indexes into the factor base
-type sieveResult struct {
-	x         big.Int
-	factors   []uint
-	remainder int64
+type Result struct {
+	X         big.Int
+	Factors   []uint
+	Remainder int64
 }
 
-// Find values of x for which f(x) = a x^2 + b x + c factors (within one bigprime) over the primes in fb.
+// Smooth finds values of x for which f(x) = a x^2 + b x + c factors (within one bigprime) over the primes in fb.
 // Returns each x found, togegther with the factorization of f(x) into factor base primes and a
-// possible bigprime remainder.
-// Searches in the window [x0, x0+sieverange).
+// possible bigprime (< max(fb)^2) remainder.
+// Searches in the window [x0, x1).
 // requires: a > 0
-func sievesmooth(a, b, c big.Int, fb []int64, x0 big.Int, rnd *rand.Rand) []sieveResult {
-	var result []sieveResult
+func Smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Result {
+	var result []Result
 
 	maxp := fb[len(fb)-1]
 
 	// Compute scaling factor for logarithms
 	// Note: we assume that the maximum f(x) is achieved at one of the endpoints of the sieve range.
 	y0 := a.Mul(x0).Add(b).Mul(x0).Add(c).Abs()
-	x1 := x0.Add64(sieverange - 1)
 	y1 := a.Mul(x1).Add(b).Mul(x1).Add(c).Abs()
 	maxf := y0
 	if y1.Cmp(maxf) > 0 {
@@ -112,7 +115,7 @@ func sievesmooth(a, b, c big.Int, fb []int64, x0 big.Int, rnd *rand.Rand) []siev
 			continue
 		}
 
-		result = append(result, sieveResult{x, dup(factors), y.Int64()})
+		result = append(result, Result{X: x, Factors: dup(factors), Remainder: y.Int64()})
 		if len(result) > 2*len(fb) {
 			// early out when we're factoring small n
 			// TODO: include in spec for sievesmooth function?
@@ -339,7 +342,7 @@ func makeSieveInfo(a, b, c big.Int, fb []int64, x0 big.Int, scale float64, rnd *
 				break
 			}
 			st := x0.Mod64s(pk, s)
-			for _, r := range quadraticModPK(a.Mod64s(pk, s), b.Mod64s(pk, s), c.Mod64s(pk, s), p, k, pk, rnd) {
+			for _, r := range fmath.QuadraticModPK(a.Mod64s(pk, s), b.Mod64s(pk, s), c.Mod64s(pk, s), p, k, pk, rnd) {
 				// find first pk*i+r which is >= x0
 				off := (r - st + pk) % pk
 				si = append(si, sieveinfo{int32(pk), lg_p, int32(off)})
@@ -348,4 +351,10 @@ func makeSieveInfo(a, b, c big.Int, fb []int64, x0 big.Int, scale float64, rnd *
 		}
 	}
 	return si
+}
+
+func dup(x []uint) []uint {
+	y := make([]uint, len(x))
+	copy(y, x)
+	return y
 }

@@ -1,9 +1,10 @@
-package factorlib
+package math
 
 import (
 	"fmt"
-	"github.com/randall77/factorlib/big"
 	"math/rand"
+
+	"github.com/randall77/factorlib/big"
 )
 
 // generic math routines
@@ -13,8 +14,8 @@ import (
 // known to be < 2^31. (That leaves room for a*x+b*y computations
 // without overflowing.)
 
-// exp returns x^e
-func exp(x int64, e uint) int64 {
+// Exp returns x^e
+func Exp(x int64, e uint) int64 {
 	r := int64(1)
 	for e != 0 {
 		if e&1 != 0 {
@@ -26,8 +27,8 @@ func exp(x int64, e uint) int64 {
 	return r
 }
 
-// expMod returns x^e mod p
-func expMod(x, e, p int64) int64 {
+// ExpMod returns x^e mod p
+func ExpMod(x, e, p int64) int64 {
 	r := int64(1)
 	for e != 0 {
 		if e&1 != 0 {
@@ -39,10 +40,10 @@ func expMod(x, e, p int64) int64 {
 	return r
 }
 
-// gcd returns the greatest common divisor of x and y.
+// GCD returns the greatest common divisor of x and y.
 //   x >= 0 && y >= 0
 //   x != 0 || y != 0
-func gcd(x, y int64) int64 {
+func GCD(x, y int64) int64 {
 	if x < y {
 		x, y = y, x
 	}
@@ -54,9 +55,9 @@ func gcd(x, y int64) int64 {
 	}
 }
 
-// modInv returns y such that x*y % n == 1.
+// ModInv returns y such that x*y % n == 1.
 //   gcd(x,n) == 1
-func modInv(x, n int64) int64 {
+func ModInv(x, n int64) int64 {
 	// http://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Computing_multiplicative_inverses_in_modular_structures
 	t := int64(0)
 	newt := int64(1)
@@ -79,13 +80,13 @@ func modInv(x, n int64) int64 {
 // returns true iff there exists an x such that x^2 == n mod p.
 //   p must be prime
 //   0 <= n < p
-func quadraticResidue(n, p int64) bool {
+func QuadraticResidue(n, p int64) bool {
 	if n < 2 {
 		return true
 	}
 	// a is a quadratic residue (x^2 == a has a solution) iff
 	// a^((p-1)/2) == 1 mod p.
-	return expMod(n, p>>1, p) == 1
+	return ExpMod(n, p>>1, p) == 1
 }
 
 // sqrtModP finds an x such that x^2 == n mod p.
@@ -93,19 +94,19 @@ func quadraticResidue(n, p int64) bool {
 //   0 <= n < p
 //   quadraticResidue(n, p) must be true
 // The algorithm is randomized, uses rnd for random bits.
-func sqrtModP(n, p int64, rnd *rand.Rand) int64 {
+func SqrtModP(n, p int64, rnd *rand.Rand) int64 {
 	if n < 2 {
 		return n
 	}
 	if p%4 == 3 {
-		return expMod(n, (p+1)>>2, p)
+		return ExpMod(n, (p+1)>>2, p)
 	}
 	// Cipolla's algorithm (http://en.wikipedia.org/wiki/Cipolla's_algorithm)
 	var a, d int64
 	for {
 		a = 1 + rnd.Int63n(p-1)
 		d = (a*a + p - n) % p
-		if !quadraticResidue(d, p) {
+		if !QuadraticResidue(d, p) {
 			break
 		}
 	}
@@ -137,7 +138,7 @@ func sqrtModP(n, p int64, rnd *rand.Rand) int64 {
 //   k >= 1
 //   quadraticResidue(n, p) must be true
 // The algorithm is randomized, uses rnd for random bits.
-func sqrtModPK(n, p int64, k uint, rnd *rand.Rand) int64 {
+func SqrtModPK(n, p int64, k uint, rnd *rand.Rand) int64 {
 	if n < 2 {
 		return n
 	}
@@ -163,7 +164,7 @@ func sqrtModPK(n, p int64, k uint, rnd *rand.Rand) int64 {
 	}
 
 	// first solve x^2 == n mod p
-	r := sqrtModP(n%p, p, rnd)
+	r := SqrtModP(n%p, p, rnd)
 
 	pi := p
 	for i := uint(1); i < k; i++ {
@@ -175,23 +176,24 @@ func sqrtModPK(n, p int64, k uint, rnd *rand.Rand) int64 {
 		// s = r + t * p^i
 		// TODO: lift by doubling i instead of incrementing i
 		t := (n + (pi*p-r)*r) / pi % p
-		t = t * modInv(2*r, p) % p
+		t = t * ModInv(2*r, p) % p
 		r += t * pi
 		pi *= p
 	}
 	return r
 }
 
-type primePower struct {
-	p int64
-	k uint
+// A PrimePower represents the number P^K.
+type PrimePower struct {
+	P int64
+	K uint
 }
 
 // returns a solution to x^2 == a mod n, where n is a product of the listed prime powers.
 //   gcd(a,n) == 1
 //   n[i].k >= 1
 //   a must be a quadratic residue mod each prime
-func sqrtModN(a int64, n []primePower, rnd *rand.Rand) int64 {
+func SqrtModN(a int64, n []PrimePower, rnd *rand.Rand) int64 {
 	if a <= 1 {
 		return a
 	}
@@ -199,8 +201,8 @@ func sqrtModN(a int64, n []primePower, rnd *rand.Rand) int64 {
 	// compute N = product of all primes
 	N := int64(1)
 	for _, pp := range n {
-		for i := uint(0); i < pp.k; i++ {
-			N *= pp.p
+		for i := uint(0); i < pp.K; i++ {
+			N *= pp.P
 		}
 	}
 
@@ -209,16 +211,16 @@ func sqrtModN(a int64, n []primePower, rnd *rand.Rand) int64 {
 	for _, pp := range n {
 		// compute p^k
 		pk := int64(1)
-		for i := uint(0); i < pp.k; i++ {
-			pk *= pp.p
+		for i := uint(0); i < pp.K; i++ {
+			pk *= pp.P
 		}
 
 		// find a solution to x^2 == a mod p^k
-		x := sqrtModPK(a%pk, pp.p, pp.k, rnd)
+		x := SqrtModPK(a%pk, pp.P, pp.K, rnd)
 
 		// add it in to total result
 		M := N / pk
-		r += M * x * modInv(M%pk, pk) // TODO: check for overflow
+		r += M * x * ModInv(M%pk, pk) // TODO: check for overflow
 		r %= N
 	}
 	// check result
@@ -230,9 +232,9 @@ func sqrtModN(a int64, n []primePower, rnd *rand.Rand) int64 {
 
 // returns a solution to x^2 == a mod n, where n is a product of the listed prime powers.
 //   gcd(a,n) == 1
-//   n[i].k >= 1
+//   n[i].K >= 1
 //   a must be a quadratic residue mod each prime
-func bigSqrtModN(a big.Int, n []primePower, rnd *rand.Rand) big.Int {
+func BigSqrtModN(a big.Int, n []PrimePower, rnd *rand.Rand) big.Int {
 	if a.Cmp(big.One) <= 0 {
 		return a
 	}
@@ -240,8 +242,8 @@ func bigSqrtModN(a big.Int, n []primePower, rnd *rand.Rand) big.Int {
 	// compute N = product of all primes
 	N := big.Int64(1)
 	for _, pp := range n {
-		for i := uint(0); i < pp.k; i++ {
-			N = N.Mul64(pp.p)
+		for i := uint(0); i < pp.K; i++ {
+			N = N.Mul64(pp.P)
 		}
 	}
 
@@ -250,16 +252,16 @@ func bigSqrtModN(a big.Int, n []primePower, rnd *rand.Rand) big.Int {
 	for _, pp := range n {
 		// compute p^k
 		pk := int64(1)
-		for i := uint(0); i < pp.k; i++ {
-			pk *= pp.p
+		for i := uint(0); i < pp.K; i++ {
+			pk *= pp.P
 		}
 
 		// find a solution to x^2 == a mod p^k
-		x := sqrtModPK(a.Mod64(pk), pp.p, pp.k, rnd)
+		x := SqrtModPK(a.Mod64(pk), pp.P, pp.K, rnd)
 
 		// add it in to total result
 		M := N.Div64(pk)
-		r = r.Add(M.Mul64(x).Mul64(modInv(M.Mod64(pk), pk))).Mod(N)
+		r = r.Add(M.Mul64(x).Mul64(ModInv(M.Mod64(pk), pk))).Mod(N)
 	}
 	// check result
 	if !r.Square().Mod(N).Equals(a) {
@@ -271,7 +273,7 @@ func bigSqrtModN(a big.Int, n []primePower, rnd *rand.Rand) big.Int {
 // solve ax^2+bx+c==0 mod p
 //   0 <= a,b,c < p
 //   a != 0
-func quadraticModP(a, b, c, p int64, rnd *rand.Rand) []int64 {
+func QuadraticModP(a, b, c, p int64, rnd *rand.Rand) []int64 {
 	if p == 2 {
 		// special case, easy to handle.
 		// (2 is not a unit mod 2, so 1/2a doesn't work when p==2)
@@ -288,11 +290,11 @@ func quadraticModP(a, b, c, p int64, rnd *rand.Rand) []int64 {
 	}
 
 	d := (b*b + 4*(p-a)*c) % p
-	if !quadraticResidue(d, p) {
+	if !QuadraticResidue(d, p) {
 		return nil
 	}
-	d = sqrtModP(d, p, rnd)
-	i := modInv(2*a%p, p)
+	d = SqrtModP(d, p, rnd)
+	i := ModInv(2*a%p, p)
 	r := []int64{(p - b + d) * i % p}
 	if d != 0 {
 		r = append(r, (2*p-b-d)*i%p)
@@ -304,7 +306,7 @@ func quadraticModP(a, b, c, p int64, rnd *rand.Rand) []int64 {
 //   0 <= a,b,c < p^k
 //   gcd(a,p) == 1
 //   pk == p^k
-func quadraticModPK(a, b, c, p int64, k uint, pk int64, rnd *rand.Rand) []int64 {
+func QuadraticModPK(a, b, c, p int64, k uint, pk int64, rnd *rand.Rand) []int64 {
 	if p == 2 {
 		if k > 1 {
 			// TODO: k > 1
@@ -326,12 +328,12 @@ func quadraticModPK(a, b, c, p int64, k uint, pk int64, rnd *rand.Rand) []int64 
 
 	d := (b*b + 4*(pk-a)*c) % pk
 	e := d % p
-	if e == 0 || !quadraticResidue(e, p) {
+	if e == 0 || !QuadraticResidue(e, p) {
 		// TODO: there might be solutions if e == 0.  Figure that out.
 		return nil
 	}
-	d = sqrtModPK(d, p, k, rnd)
-	i := modInv(2*a%pk, pk)
+	d = SqrtModPK(d, p, k, rnd)
+	i := ModInv(2*a%pk, pk)
 	r := []int64{(pk - b + d) * i % pk}
 	if d != 0 {
 		r = append(r, (2*pk-b-d)*i%pk)
