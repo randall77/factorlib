@@ -225,7 +225,7 @@ type eqn struct {
 // upon a factor of n, return it instead.
 func makeFactorBase(n big.Int) ([]int64, int64) {
 	// upper limit on prime factors (TODO: dependent on n) that we sieve with
-	const B = 50000
+	const B = 10000
 	fb := []int64{-1}
 	s := &big.Scratch{}
 	for i := 0; ; i++ {
@@ -247,4 +247,4 @@ func makeFactorBase(n big.Int) ([]int64, int64) {
 }
 
 // width of window to sieve at once.  TODO: make configurable?
-const sieverange = 1 << 24
+const sieverange = 1 << 28

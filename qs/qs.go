@@ -111,8 +111,7 @@ func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 
 	x0 := n.SqrtCeil()
 	for {
-		x1 := x0.Add64(1 << 24) // TODO: paramaterize?
-		//logger.Printf("sieving at %d\n", x0)
+		x1 := x0.Add64(1 << 30) // TODO: paramaterize?
 		for _, r := range sieve.Smooth(big.Int64(1), big.Int64(0), n.Neg(), fb, x0, x1, rnd) {
 			x := r.X
 			factors := r.Factors
@@ -210,7 +209,7 @@ type eqn struct {
 // upon a factor of n, return it instead.
 func makeFactorBase(n big.Int) ([]int64, int64) {
 	// upper limit on prime factors (TODO: dependent on n) that we sieve with
-	const B = 50000
+	const B = 10000
 	fb := []int64{-1}
 	s := &big.Scratch{}
 	for i := 0; ; i++ {

@@ -191,7 +191,7 @@ type PrimePower struct {
 
 // returns a solution to x^2 == a mod n, where n is a product of the listed prime powers.
 //   gcd(a,n) == 1
-//   n[i].k >= 1
+//   n[i].K >= 1
 //   a must be a quadratic residue mod each prime
 func SqrtModN(a int64, n []PrimePower, rnd *rand.Rand) int64 {
 	if a <= 1 {

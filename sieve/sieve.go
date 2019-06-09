@@ -2,18 +2,19 @@ package sieve
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
+	"unsafe"
 
 	"github.com/randall77/factorlib/big"
 	fmath "github.com/randall77/factorlib/math"
 )
 
-// width of window to sieve at once.  TODO: make configurable?
-const sieverange = 1 << 24
-
 // use an array of this size to do the sieving
-const window = 1 << 14
+// 16KB fits in L1 cache (L1 cache is typically 32KB)
+const windowBits = 14
+const window = 1 << windowBits
 
 // check to see if anything returned from the sieve isn't actually usable
 const checkFalsePositive = false
@@ -39,50 +40,105 @@ type Result struct {
 // Returns each x found, togegther with the factorization of f(x) into factor base primes and a
 // possible bigprime (< max(fb)^2) remainder.
 // Searches in the window [x0, x1).
-// requires: a > 0
 func Smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Result {
-	var result []Result
-
-	maxp := fb[len(fb)-1]
-
-	// Compute scaling factor for logarithms
-	// Note: we assume that the maximum f(x) is achieved at one of the endpoints of the sieve range.
-	y0 := a.Mul(x0).Add(b).Mul(x0).Add(c).Abs()
-	y1 := a.Mul(x1).Add(b).Mul(x1).Add(c).Abs()
-	maxf := y0
-	if y1.Cmp(maxf) > 0 {
-		maxf = y1
+	if fb[0] != -1 {
+		panic("first factor base must be -1")
 	}
-	scale := 255 / maxf.Log()
-
-	// find starting points
-	si := makeSieveInfo(a, b, c, fb, x0, scale, rnd)
-
-	// compute thresholds for each window
-	var thresholds [sieverange / window]byte
-	for i := 0; i < sieverange; i += window {
-		x := x0.Add64(int64(i))
-		y0 = a.Mul(x).Add(b).Mul(x).Add(c).Abs()
-		x = x.Add64(window)
-		y1 = a.Mul(x).Add(b).Mul(x).Add(c).Abs()
-		m := y0
-		if y1.Cmp(m) > 0 {
-			m = y1
+	// Compute result.
+	result := smooth(a, b, c, fb, x0, x1, rnd)
+	// Check result.
+	for _, r := range result {
+		f := a.Mul(r.X).Add(b).Mul(r.X).Add(c)
+		g := big.Int64(r.Remainder)
+		for _, i := range r.Factors {
+			g = g.Mul64(fb[i])
 		}
-		thresholds[i/window] = byte(scale * (m.Log() - 2*math.Log(float64(maxp))))
+		if !f.Equals(g) {
+			panic(fmt.Sprintf("Smooth result not correct a=%d b=%d c=%d f(%d)=%d != %d %v %d", a, b, c, r.X, f, g, r.Factors, r.Remainder))
+		}
+	}
+	// Return result.
+	return result
+}
+
+func smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Result {
+	if x0.Equals(x1) {
+		return nil
+	}
+	if x0.Add64(1).Equals(x1) {
+		// Testing just x0.
+		var scratch big.Scratch
+		var factors []uint
+		f := a.Mul(x0).Add(b).Mul(x0).Add(c)
+		if f.IsZero() {
+			return nil
+		}
+		for i, p := range fb {
+			if p == -1 {
+				if f.Sign() < 0 {
+					f = f.Neg()
+					factors = append(factors, uint(i))
+				}
+				continue
+			}
+			if f.Mod64s(p, &scratch) == 0 {
+				f = f.Div64(p)
+				factors = append(factors, uint(i))
+			}
+		}
+		maxp := fb[len(fb)-1] // TODO: assumes last entry in factor base is the largest
+		if f.Cmp64(maxp*maxp) < 0 {
+			return []Result{Result{X: x0, Factors: factors, Remainder: f.Int64()}}
+		}
+		return nil
+	}
+
+	// Find min and max of f(x)=ax^2+bx+c over the range [x0,x1)
+	// The min and max must be either one of the endpoints, or
+	// the value at the extremum x=-b/2a, if that is in range.
+	y0 := a.Mul(x0).Add(b).Mul(x0).Add(c)
+	min := y0
+	max := y0
+	x1m1 := x1.Sub64(1)
+	y1 := a.Mul(x1m1).Add(b).Mul(x1m1).Add(c)
+	if max.Cmp(y1) < 0 {
+		max = y1
+	}
+	if min.Cmp(y1) > 0 {
+		min = y1
+	}
+	x := b.Div(a.Lsh(1)).Neg() // TODO: check both round up and round down?
+	if x.Cmp(x0) > 0 && x.Cmp(x1m1) < 0 {
+		y := a.Mul(x).Add(b).Mul(x).Add(c)
+		if max.Cmp(y) < 0 {
+			max = y
+		}
+		if min.Cmp(y) > 0 {
+			min = y
+		}
+	}
+
+	if max.Sign() != min.Sign() {
+		// split if we change sign
+		// TODO: just binary search for the midpoint? Or is this enough?
+		xmid := x0.Add(x1).Rsh(1)
+		return append(
+			smooth(a, b, c, fb, x0, xmid, rnd),
+			smooth(a, b, c, fb, xmid, x1, rnd)...,
+		)
 	}
 
 	// sieve to find any potential smooth f(x)
-	res := sieveinner(si, thresholds[:])
+	res := sieveinner(a, b, c, fb, x0, x1, min, max, rnd)
 
 	// results buffer
+	var result []Result
 	var factors []uint
 	s := &big.Scratch{}
 
 	// check potential results using trial factorization
-	for _, i := range res {
+	for _, x := range res {
 		// compute y=f(x)
-		x := x0.Add64(int64(i))
 		y := a.Mul(x).Add(b).Mul(x).Add(c)
 
 		// trial divide y by the factor base
@@ -103,22 +159,26 @@ func Smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Resul
 		}
 
 		// if remainder > B^2, it's too big, might not be prime.
+		maxp := fb[len(fb)-1]
 		if y.Cmp64(maxp*maxp) > 0 {
 			if checkFalsePositive {
 				var f []int64
 				for _, j := range factors {
 					f = append(f, fb[j])
 				}
-				fmt.Printf("  false positive x=%d f(x)=%d f=%v·%d\n", x, a.Mul(x).Add(b).Mul(x).Add(c), f, y)
+				fmt.Printf("  false positive x=%d f(x)=%d f=%v·%d maxp*maxp=%d min=%d max=%d\n", x, a.Mul(x).Add(b).Mul(x).Add(c), f, y, maxp*maxp, min, max)
 			}
 			falsepos++
+			continue
+		}
+		if y.Cmp(big.Int64(y.Int64())) != 0 {
 			continue
 		}
 
 		result = append(result, Result{X: x, Factors: dup(factors), Remainder: y.Int64()})
 		if len(result) > 2*len(fb) {
 			// early out when we're factoring small n
-			// TODO: include in spec for sievesmooth function?
+			// TODO: include in spec for Smooth function?
 			return result
 		}
 	}
@@ -126,13 +186,12 @@ func Smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Resul
 		// This is expensive, we have to trial divide all the numbers in the
 		// sieve range.  Oh well, testing.
 	checkloop:
-		for i := 0; i < sieverange; i++ {
+		for x := x0; x.Cmp(x1) < 0; x = x.Add64(1) {
 			for _, r := range res {
-				if r == i {
+				if r.Equals(x) {
 					continue checkloop
 				}
 			}
-			x := x0.Add64(int64(i))
 			y := a.Mul(x).Add(b).Mul(x).Add(c)
 			var f []int64
 			for _, p := range fb {
@@ -150,207 +209,196 @@ func Smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Resul
 			}
 
 			// if remainder <= B^2, leftover is a prime
+			maxp := fb[len(fb)-1]
 			if y.Cmp64(maxp*maxp) <= 0 {
-				fmt.Printf("  false negative x=%d f(x)=%d f=%v·%d\n", x, a.Mul(x).Add(b).Mul(x).Add(c), f, y)
+				log.Printf("  false negative x=%d f(x)=%d f=%v·%d\n", x, a.Mul(x).Add(b).Mul(x).Add(c), f, y)
 			}
 		}
 	}
 	return result
 }
 
-// sieveinfo
-type sieveinfo_inner struct {
-	pk   int32  // p^k, the amount we step by through the sieve array
-	off  uint16 // offset within the window which holds the next muliple of p^k
-	lg_p uint8  // log_2(p), the amount we add to each sieve array slot
+// sieveEntry is the data type in which we accumulate the sum of
+// the scaled logarithms of the factors we have found so far.
+type sieveEntry uint8
+
+// sieveInfo contains data about a power of a factor base prime.
+type sieveInfo uint64
+
+const (
+	pkBits   = 32
+	offBits  = windowBits
+	logpBits = 8 * unsafe.Sizeof(sieveEntry(0))
+)
+
+func makeSieveInfo(pk uint, off uint, logp sieveEntry) sieveInfo {
+	return sieveInfo(pk) + sieveInfo(off)<<pkBits + sieveInfo(logp)<<(pkBits+offBits)
 }
 
-// a block of sieveinfo_inners
-type block struct {
-	next *block
-	num  int
-	data [64 - 2]sieveinfo_inner
+// p^k, the amount we step by through the sieve array
+func (si sieveInfo) pk() uint {
+	return uint(si & (1<<pkBits - 1))
 }
 
-func sieveinner(si []sieveinfo, thresholds []byte) []int {
-	if window >= 1<<16 {
-		panic("window too big")
+// offset within the window which holds the next muliple of p^k
+func (si sieveInfo) off() uint {
+	return uint(si >> pkBits & (1<<offBits - 1))
+}
+
+// scaled value of log(p), the amount we add to each sieve array slot
+func (si sieveInfo) logp() sieveEntry {
+	return sieveEntry(si >> (pkBits + offBits))
+}
+
+func init() {
+	if pkBits+offBits+logpBits > 64 {
+		panic("sieveInfo needs too many bits")
+	}
+	if logpBits != 8 {
+		panic("bad")
+	}
+}
+
+func sieveinner(a, b, c big.Int, fb []int64, x0, x1, min, max big.Int, rnd *rand.Rand) []big.Int {
+	// Compute scaling factor for logarithms
+	// This guarantees that the sieve values will not overflow
+	var scale float64
+	if max.Sign() > 0 {
+		scale = 255.99 / max.Log()
+	} else {
+		scale = 255.99 / min.Neg().Log()
 	}
 
-	// compute stats about our sieve work
-	maxpk := int32(0)
-	nsmall := 0
-	for _, s := range si {
-		pk := s.pk
-		if pk < window {
-			nsmall++
-		}
-		if pk > maxpk {
-			maxpk = pk
-		}
-	}
-	nlarge := len(si) - nsmall
+	s := &big.Scratch{}
+	maxp := fb[len(fb)-1]
+	logmaxp := big.Int64(maxp).Log()
 
-	// Slice to store sieve work with pk < window
-	small := make([]sieveinfo_inner, 0, nsmall)
+	// Our sieve will be an array of bytes of size "window".
+	//
+	// We divide the factor base into "small" and "large" factors.
+	// Small factors are <window, so for them we need to mark at least
+	// one entry in every window.Large factors are >window, where we don't
+	// need to update the window every time for that factor.
+	//
+	// Small factors are kept in a slice and processed every window.
+	// Large factors are kept in a slice of slices. The outer slice
+	// is indexed by how many windows away the next occurence of the
+	// prime powers in that slice are.
 
-	// For pk >= window, arrange sieve work in buckets of size w by offset.
-	// The offsets stored in this array are relative to the start
-	// of the bucket.  So all entries s in large[3] have an effective
-	// offset of 3*window+s.off
-	nw := 2 + int(maxpk/window)
-	large := make([]*block, nw)
-
-	// Allocate enough free blocks to hold everything.
-	// There will be at most one partially empty block for each window.
-	// Compute as the maximum # of full blocks + maximum # of nonfull blocks.
-	n := nlarge/len(block{}.data) + nw
-	blockstore := make([]block, n)
-	// start each window with one empty block
-	for i := 0; i < nw; i++ {
-		large[i] = &blockstore[i]
-	}
-	// put the rest in a free list
-	var freeblocks *block
-	if nw < n {
-		for i := nw; i < n-1; i++ {
-			blockstore[i].next = &blockstore[i+1]
-		}
-		freeblocks = &blockstore[nw]
-	}
-
-	// put each sieve entry into the appropriate bucket
-	for _, s := range si {
-		pk := s.pk
-		off := s.off
-		lg_p := s.lg_p
-		if pk < window {
-			small = append(small, sieveinfo_inner{pk, uint16(off), lg_p})
+	// List of sieveInfo records for small primes
+	var small []sieveInfo
+	// List of lists of sieveInfo records for large primes. Indexed by the number
+	// of windows away the next occurrence of that prime power is.
+	large := make([][]sieveInfo, (maxp+window-1)/window+1)
+	for _, p := range fb[1:] {
+		if a.Mod64s(p, s) == 0 {
+			// This can happen in mpqs if p is one of the factors we used to construct a.
+			// Ignore this prime - we might miss a few smooth f(x), but such is life.
 			continue
 		}
-		i := off / window
-		b := large[i]
-		if b.num == len(b.data) {
-			c := freeblocks
-			freeblocks = c.next
-			c.next = b
-			large[i] = c
-			b = c
+		logp := sieveEntry(scale * math.Log(float64(p))) // note: rounds down to avoid overflow in sieveEntry type
+		if logp == 0 {
+			// Not the end of the world, but it means we're not doing
+			// anything useful for this factor base prime.
+			panic("logp too small")
 		}
-		b.data[b.num] = sieveinfo_inner{pk, uint16(off % window), lg_p}
-		b.num++
-	}
-	/*
-		logger.Printf("len(si)=%d, len(small)=%d", len(si), len(small))
-		for i := 0; i < nw; i++ {
-			n := 0
-			for b := large[i]; b != nil; b = b.next {
-				n += b.num
+		// The upper bound is kind of arbitrary, but choose to use powers of p
+		// as long as p^k is smaller than than the maximum factor base prime.
+		for k, pk := uint(1), p; pk <= maxp; k, pk = k+1, pk*p {
+			st := x0.Mod64s(pk, s)
+			for _, r := range fmath.QuadraticModPK(a.Mod64s(pk, s), b.Mod64s(pk, s), c.Mod64s(pk, s), p, k, pk, rnd) {
+				// find first pk*i+r which is >= x0
+				off := (r - st + pk) % pk
+				if pk < window {
+					small = append(small, makeSieveInfo(uint(pk), uint(off), logp))
+				} else {
+					i := off / window
+					large[i] = append(large[i], makeSieveInfo(uint(pk), uint(off%window), logp))
+				}
 			}
-			logger.Printf("len(large[%d])=%d", i, n)
 		}
-	*/
+	}
 
-	var r []int
-	for i := 0; i < sieverange; i += window {
+	// A smooth number is one for which we've found a lot of small
+	// factors. This will be identifiable in the sieve array by a
+	// large sieve value, representing the sum of the logarithms of the
+	// factor base primes that divide f(x0 + sieve index).
+	//
+	// The threshold is the value the sieve array entry needs to reach
+	// before we become interested in it. The max entry is 255, and if we
+	// reach that value, we know we have fully factored f(x) over the
+	// factor base. In practice, we don't need to reach all the way to
+	// 255 for the entry to be useful.
+	// The 7/8 is a fudge factor to account for rounding and other
+	// second order effects.
+	// Using min.Log accounts for non-uniform size of f(x).
+	// 2*log(maxp) allows us to find a single prime remainder
+	// less than the square of the max factor base prime.
+
+	// This is the array of sums of logarithms of factors found.
+	// Factors of f(x0+i) are added to sieve[i%window]
+	// (We do a range of window numbers at a time.)
+	var sieve [window]sieveEntry
+
+	// Results we've found so far (the x values).
+	var r []big.Int
+
+	for x0.Cmp(x1) < 0 {
 		// start with a clear sieve
-		var sieve [window]byte
+		for j := range sieve {
+			sieve[j] = 0
+		}
 
 		// increment sieve entries for f(x) that are divisible
 		// by each factor base prime.
 
 		// first, the small primes
-		for j, s := range small {
-			pk := int(s.pk)
-			off := int(s.off)
-			lg_p := s.lg_p
+		for i, s := range small {
+			pk := s.pk()
+			off := s.off()
+			logp := s.logp()
 			for ; off < window; off += pk {
-				sieve[off] += lg_p
+				sieve[off] += logp
 			}
-			small[j] = sieveinfo_inner{int32(pk), uint16(off - window), lg_p}
+			small[i] = makeSieveInfo(pk, off-window, logp)
 		}
 
 		// second, the large primes
-		for b := large[0]; b != nil; {
-			for _, s := range b.data[:b.num] {
-				pk := int(s.pk)
-				off := int(s.off)
-				lg_p := s.lg_p
-				sieve[off] += lg_p
-				off += pk
-				j := off / window
-				c := large[j]
-				if c.num == len(c.data) {
-					d := freeblocks
-					freeblocks = d.next
-					d.next = c
-					large[j] = d
-					c = d
-				}
-				c.data[c.num] = sieveinfo_inner{int32(pk), uint16(off % window), lg_p}
-				c.num++
-			}
-			c := b
-			b = b.next
-			c.num = 0
-			c.next = freeblocks
-			freeblocks = c
-		}
-
-		// shift large buckets down by one
+		l := large[0]
 		copy(large, large[1:])
-		// allocate a new empty bucket for the last one
-		b := freeblocks
-		freeblocks = b.next
-		b.next = nil
-		large[len(large)-1] = b
+		large[len(large)-1] = l[:0] // reuses slice backing array
+		for _, s := range l {
+			pk := s.pk()
+			off := s.off()
+			logp := s.logp()
+			sieve[off] += logp
+			off += pk
+			j := off / window
+			large[j] = append(large[j], makeSieveInfo(pk, off%window, logp))
+		}
 
-		// check for smooth numbers
-		threshold := thresholds[i/window]
-		for j := 0; j < window; j++ {
-			if sieve[j] >= threshold {
-				r = append(r, i+j)
+		// Check for smooth numbers.
+		// Use the threshold corresponding to the smaller endpoint.
+		y0 := a.Mul(x0).Add(b).Mul(x0).Add(c).Abs()
+		z := x0.Add64(window)
+		y1 := a.Mul(z).Add(b).Mul(z).Add(c).Abs()
+		if y0.Cmp(y1) > 0 {
+			y0 = y1
+		}
+		threshold := sieveEntry(scale * (y0.Abs().Log() - 2*logmaxp))
+		for i := 0; i < window; i++ {
+			if sieve[i] >= threshold {
+				x := x0.Add64(int64(i))
+				if x.Cmp(x1) < 0 {
+					r = append(r, x)
+				}
 			}
 		}
+
+		// Next window.
+		x0 = x0.Add64(window)
 	}
 	return r
-}
-
-type sieveinfo struct {
-	pk   int32 // p^k for this factor base entry
-	lg_p uint8 // ~log_2(p)
-	off  int32 // working offset in sieve array
-}
-
-func makeSieveInfo(a, b, c big.Int, fb []int64, x0 big.Int, scale float64, rnd *rand.Rand) []sieveinfo {
-	var si []sieveinfo
-	s := &big.Scratch{}
-	maxp := fb[len(fb)-1]
-
-	for _, p := range fb[1:] {
-		if a.Mod64(p) == 0 {
-			// This can happen in mpqs if p is one of the factors we used to construct a.
-			// Ignore this prime - we might miss a few smooth f(x), but such is life.
-			continue
-		}
-		lg_p := byte(scale * math.Log(float64(p))) // note: round down to avoid overflow in sieve buckets
-		pk := p
-		for k := uint(1); ; k++ {
-			if pk > maxp {
-				// Kind of arbitrary, but use powers of p as long as p^k is
-				// smaller than than the maximum factor base prime.
-				break
-			}
-			st := x0.Mod64s(pk, s)
-			for _, r := range fmath.QuadraticModPK(a.Mod64s(pk, s), b.Mod64s(pk, s), c.Mod64s(pk, s), p, k, pk, rnd) {
-				// find first pk*i+r which is >= x0
-				off := (r - st + pk) % pk
-				si = append(si, sieveinfo{int32(pk), lg_p, int32(off)})
-			}
-			pk *= p
-		}
-	}
-	return si
 }
 
 func dup(x []uint) []uint {
