@@ -93,6 +93,20 @@ func (x Int) Rsh(n uint) Int {
 	return Int{new(big.Int).Rsh(x.v, n)}
 }
 
+func (x Int) Min(y Int) Int {
+	if x.Cmp(y) < 0 {
+		return x
+	}
+	return y
+}
+
+func (x Int) Max(y Int) Int {
+	if x.Cmp(y) > 0 {
+		return x
+	}
+	return y
+}
+
 // Info extraction
 
 func (x Int) Int64() int64 {
@@ -227,10 +241,11 @@ func (x Int) Rand(rnd *rand.Rand) Int {
 
 // Optimized routines
 
-// Scratch space for use by Mod64s.  Mod64s is the same
-// as Mod64 except it uses the scratch space to avoid allocation.
+// Scratch space for use by Mod64s.
 type Scratch [3]big.Int
 
+// Mod64s is the same as Mod64 except it uses
+// the scratch space provided to avoid allocation.
 func (x Int) Mod64s(y int64, s *Scratch) int64 {
 	// Note: use DivMod here instead of Mod so we can reuse
 	// storage for the dividend.  Mod allocates storage for
