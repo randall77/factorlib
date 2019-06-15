@@ -128,6 +128,10 @@ func SqrtModP(n, p int64, rnd *rand.Rand) int64 {
 	if r1 != 0 {
 		panic("bad f_p^2 element")
 	}
+	if r0 > p/2 {
+		// Pick smaller root, just to be deterministic.
+		r0 = p - r0
+	}
 	return r0
 }
 
