@@ -4,6 +4,7 @@ import (
 	"log"
 	"math/rand"
 	"runtime"
+	"sort"
 
 	"github.com/randall77/factorlib/big"
 	"github.com/randall77/factorlib/linear"
@@ -61,10 +62,11 @@ func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	maxp := fb[len(fb)-1]
 
 	// Figure out maximum possible a we want.
-	amax := n.SqrtCeil().Lsh(2).Div64(sieverange)
+	amax := n.SqrtCeil().Lsh(1).Div64(sieverange)
 	// Point to stop adding more factors to a.
 	// It is ok if a is a bit small.
 	amin := amax.Div64(maxp)
+	logger.Printf("a range: [%d,%d]\n", amin, amax)
 
 	// matrix is used to do gaussian elimination on mod 2 exponents.
 	m := linear.NewMatrix(uint(len(fb)))
@@ -76,105 +78,159 @@ func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	}
 	largeprimes := map[int64]largerecord{}
 
-	// channels to communicate with workers
+	// Set up worker goroutines.
 	workers := runtime.NumCPU() // TODO: set up as a parameter somehow?
 	logger.Printf("workers: %d\n", workers)
-	seeds := make(chan int64, workers)
-	results := make(chan []sieve.Result, workers)
-
-	// Spawn workers which find smooth relations
+	tasks := make(chan task, workers+1)
+	results := make(chan result, workers+1)
 	for i := 0; i < workers; i++ {
-		seeds <- rnd.Int63() // Add a task to the work queue.
-		go mpqs_worker(n, amin, fb, results, seeds)
+		go worker(tasks, results)
 	}
 
-	// process results
+	// Send initial tasks.
+	var id int64 // Identify tasks with a sequence number.
+	for i := 0; i < workers+1; i++ {
+		tasks <- task{
+			id:   id,
+			n:    n,
+			amin: amin,
+			fb:   fb,
+			seed: rnd.Int63(),
+		}
+		id++
+	}
+
+	// Process results.
+	pending := map[int64]result{}
+	var next int64
 	for {
-		rs := <-results
-		for _, r := range rs {
-			x := r.X
-			factors := r.Factors
-			remainder := r.Remainder
-			if remainder != 1 {
-				// try to find another record with the same largeprime
-				lr, ok := largeprimes[remainder]
-				if !ok {
-					// haven't seen this large prime yet.  Save record for later
-					largeprimes[remainder] = largerecord{x, factors}
-					continue
-				}
-				// combine current equation with other largeprime equation
-				// x1^2 === prod(f1) * largeprime
-				// x2^2 === prod(f2) * largeprime
-				//fmt.Printf("  largeprime %d match\n", remainder)
-				x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could remainder divide n?
-				factors = append(factors, lr.f...)
-			}
+		// Wait for a result.
+		res := <-results
+		// Queue up another task.
+		tasks <- task{
+			id:   id,
+			n:    n,
+			amin: amin,
+			fb:   fb,
+			seed: rnd.Int63(),
+		}
+		id++
+		// Record the result.
+		pending[res.id] = res
 
-			// Add equation to the matrix
-			idlist := m.AddRow(factors, eqn{x, factors})
-			if idlist == nil {
-				if m.Rows()%100 == 0 {
-					logger.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), sieve.FalsePos(), len(largeprimes))
-					sieve.ClearFalsePos()
-				}
-				continue
+		// Process pending results.
+		// We want to process these results in ID order, so that our results
+		// are deterministic even when the underlying Go scheduler is not.
+		for {
+			res, ok := pending[next]
+			if !ok {
+				break
 			}
+			delete(pending, next)
+			next++
 
-			// We found a set of equations with all even powers.
-			// Compute a and b where a^2 === b^2 mod n
-			a := big.One
-			b := big.One
-			odd := make([]bool, len(fb))
-			for _, id := range idlist {
-				e := id.(eqn)
-				a = a.Mul(e.x).Mod(n)
-				for _, i := range e.f {
-					if !odd[i] {
-						// first occurrence of this factor
-						odd[i] = true
+			for _, r := range res.r {
+				x := r.X
+				factors := r.Factors
+				remainder := r.Remainder
+				if remainder != 1 {
+					// try to find another record with the same largeprime
+					lr, ok := largeprimes[remainder]
+					if !ok {
+						// haven't seen this large prime yet.  Save record for later
+						largeprimes[remainder] = largerecord{x, factors}
 						continue
 					}
-					// second occurrence of this factor
-					b = b.Mul64(fb[i]).Mod(n)
-					odd[i] = false
+					// combine current equation with other largeprime equation
+					// x1^2 === prod(f1) * largeprime
+					// x2^2 === prod(f2) * largeprime
+					//fmt.Printf("  largeprime %d match\n", remainder)
+					x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could remainder divide n?
+					factors = append(factors, lr.f...)
 				}
-			}
-			for _, o := range odd {
-				if o {
-					panic("gauss elim failed")
+
+				// Add equation to the matrix
+				idlist := m.AddRow(factors, eqn{x, factors})
+				if idlist == nil {
+					if m.Rows()%100 == 0 {
+						logger.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), sieve.FalsePos(), len(largeprimes))
+						sieve.ClearFalsePos()
+					}
+					continue
 				}
-			}
 
-			if a.Cmp(b) == 0 {
-				// trivial equation, ignore it
-				logger.Println("triv A")
-				continue
-			}
-			if a.Add(b).Cmp(n) == 0 {
-				// trivial equation, ignore it
-				logger.Println("triv B")
-				continue
-			}
-			f := a.Add(b).GCD(n)
-			res := []big.Int{f, n.Div(f)}
+				// We found a set of equations with all even powers.
+				// Compute a and b where a^2 === b^2 mod n
+				a := big.One
+				b := big.One
+				odd := make([]bool, len(fb))
+				for _, id := range idlist {
+					e := id.(eqn)
+					a = a.Mul(e.x).Mod(n)
+					for _, i := range e.f {
+						if !odd[i] {
+							// first occurrence of this factor
+							odd[i] = true
+							continue
+						}
+						// second occurrence of this factor
+						b = b.Mul64(fb[i]).Mod(n)
+						odd[i] = false
+					}
+				}
+				for _, o := range odd {
+					if o {
+						panic("gauss elim failed")
+					}
+				}
 
-			// Tell workers to stop.
-			close(seeds)
+				if a.Cmp(b) == 0 {
+					// trivial equation, ignore it
+					logger.Println("triv A")
+					continue
+				}
+				if a.Add(b).Cmp(n) == 0 {
+					// trivial equation, ignore it
+					logger.Println("triv B")
+					continue
+				}
+				f := a.Add(b).GCD(n)
+				res := []big.Int{f, n.Div(f)}
 
-			return res, nil
+				// Tell workers to stop.
+				close(tasks)
+
+				return res, nil
+			}
 		}
-		// Add a new task for the just-finished worker to do.
-		seeds <- rnd.Int63()
 	}
 }
 
-func mpqs_worker(n big.Int, amin big.Int, fb []int64, res chan []sieve.Result, seeds chan int64) {
+type task struct {
+	id   int64
+	n    big.Int
+	amin big.Int
+	fb   []int64
+	seed int64
+}
+type result struct {
+	id int64
+	r  []sieve.Result
+}
+
+func worker(tasks chan task, results chan result) {
 	for {
-		seed, ok := <-seeds
+		t, ok := <-tasks
 		if !ok {
-			break
+			// Request channel is closed, we're done.
+			return
 		}
+		id := t.id
+		n := t.n
+		amin := t.amin
+		fb := t.fb
+		seed := t.seed
+
 		rnd := rand.New(rand.NewSource(seed))
 
 		// Pick an a.  Use a random product of factor base primes
@@ -192,6 +248,9 @@ func mpqs_worker(n big.Int, amin big.Int, fb []int64, res chan []sieve.Result, s
 		for i, k := range af {
 			pp = append(pp, math.PrimePower{fb[i], k})
 		}
+		sort.Slice(pp, func(i, j int) bool {
+			return fb[i] < fb[j]
+		})
 		b := math.BigSqrtModN(n.Mod(a), pp, rnd)
 
 		// Set c = (b^2-n)/a
@@ -210,7 +269,7 @@ func mpqs_worker(n big.Int, amin big.Int, fb []int64, res chan []sieve.Result, s
 			}
 			rs = append(rs, r)
 		}
-		res <- rs
+		results <- result{id: id, r: rs}
 	}
 }
 
