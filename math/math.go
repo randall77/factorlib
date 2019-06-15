@@ -77,41 +77,41 @@ func ModInv(x, n int64) int64 {
 	return t
 }
 
-// returns true iff there exists an x such that x^2 == n mod p.
+// returns true iff there exists an x such that x^2 == a mod p.
 //   p must be prime
-//   0 <= n < p
-func QuadraticResidue(n, p int64) bool {
-	if n < 2 {
+//   0 <= a < p
+func QuadraticResidue(a, p int64) bool {
+	if a < 2 {
 		return true
 	}
 	// a is a quadratic residue (x^2 == a has a solution) iff
 	// a^((p-1)/2) == 1 mod p.
-	return ExpMod(n, p>>1, p) == 1
+	return ExpMod(a, p>>1, p) == 1
 }
 
-// sqrtModP finds an x such that x^2 == n mod p.
+// sqrtModP finds an x such that x^2 == a mod p.
 //   p must be prime
-//   0 <= n < p
-//   quadraticResidue(n, p) must be true
+//   0 <= a < p
+//   quadraticResidue(a, p) must be true
 // The algorithm is randomized, uses rnd for random bits.
-func SqrtModP(n, p int64, rnd *rand.Rand) int64 {
-	if n < 2 {
-		return n
+func SqrtModP(a, p int64, rnd *rand.Rand) int64 {
+	if a < 2 {
+		return a
 	}
 	if p%4 == 3 {
-		return ExpMod(n, (p+1)>>2, p)
+		return ExpMod(a, (p+1)>>2, p)
 	}
 	// Cipolla's algorithm (http://en.wikipedia.org/wiki/Cipolla's_algorithm)
-	var a, d int64
+	var b, d int64
 	for {
-		a = 1 + rnd.Int63n(p-1)
-		d = (a*a + p - n) % p
+		b = 1 + rnd.Int63n(p-1)
+		d = (b*b + p - a) % p
 		if !QuadraticResidue(d, p) {
 			break
 		}
 	}
 
-	x0 := a
+	x0 := b
 	x1 := int64(1)
 	r0 := int64(1)
 	r1 := int64(0)
@@ -135,16 +135,16 @@ func SqrtModP(n, p int64, rnd *rand.Rand) int64 {
 	return r0
 }
 
-// sqrtModPK finds an x such that x^2 == n mod p^k.
+// sqrtModPK finds an x such that x^2 == a mod p^k.
 //   p must be prime
-//   0 <= n < p^k
-//   if n != 0, p does not divide n
+//   0 <= a < p^k
+//   if a != 0, p does not divide a
 //   k >= 1
-//   quadraticResidue(n, p) must be true
+//   quadraticResidue(a, p) must be true
 // The algorithm is randomized, uses rnd for random bits.
-func SqrtModPK(n, p int64, k uint, rnd *rand.Rand) int64 {
-	if n < 2 {
-		return n
+func SqrtModPK(a, p int64, k uint, rnd *rand.Rand) int64 {
+	if a < 2 {
+		return a
 	}
 	if p == 2 {
 		// p == 2 is weird.  We'll solve one bit at a time.
@@ -153,11 +153,11 @@ func SqrtModPK(n, p int64, k uint, rnd *rand.Rand) int64 {
 		for b := uint(0); b < k; b++ {
 			var L2 []int64
 			for _, v := range L {
-				if v*v&mask == n&mask {
+				if v*v&mask == a&mask {
 					L2 = append(L2, v)
 				}
 				w := v + int64(1)<<b
-				if w*w&mask == n&mask {
+				if w*w&mask == a&mask {
 					L2 = append(L2, w)
 				}
 			}
@@ -167,19 +167,19 @@ func SqrtModPK(n, p int64, k uint, rnd *rand.Rand) int64 {
 		return L[0]
 	}
 
-	// first solve x^2 == n mod p
-	r := SqrtModP(n%p, p, rnd)
+	// first solve x^2 == a mod p
+	r := SqrtModP(a%p, p, rnd)
 
 	pi := p
 	for i := uint(1); i < k; i++ {
-		// r is a root of x^2 - n mod p^i.  Find a root of x^2 - n mod p^(i+1)
+		// r is a root of x^2 - a mod p^i.  Find a root of x^2 - a mod p^(i+1)
 		// use Hensel's lemma: http://en.wikipedia.org/wiki/Hensel's_lemma
-		// f(x) = x^2 - n
+		// f(x) = x^2 - a
 		// f'(x) = 2x != 0 mod p^k for p>2
 		// t = (n-r^2)/p^i * (2r)^-1 mod p
 		// s = r + t * p^i
 		// TODO: lift by doubling i instead of incrementing i
-		t := (n + (pi*p-r)*r) / pi % p
+		t := (a + (pi*p-r)*r) / pi % p
 		t = t * ModInv(2*r, p) % p
 		r += t * pi
 		pi *= p
