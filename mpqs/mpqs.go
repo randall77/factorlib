@@ -65,7 +65,7 @@ func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	amax := n.SqrtCeil().Lsh(1).Div64(sieverange)
 	// Point to stop adding more factors to a.
 	// It is ok if a is a bit small.
-	amin := amax.Div64(maxp)
+	amin := amax.Div64(maxp).Max(big.Two)
 	logger.Printf("a range: [%d,%d]\n", amin, amax)
 
 	// matrix is used to do gaussian elimination on mod 2 exponents.
@@ -103,6 +103,10 @@ func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	// Process results.
 	pending := map[int64]result{}
 	var next int64
+	var basic int64
+	var large int64
+	var largeHit int64
+	var falsePos int64
 	for {
 		// Wait for a result.
 		res := <-results
@@ -129,11 +133,15 @@ func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 			delete(pending, next)
 			next++
 
+			falsePos += res.falsePos
 			for _, r := range res.r {
 				x := r.X
 				factors := r.Factors
 				remainder := r.Remainder
-				if remainder != 1 {
+				if remainder == 1 {
+					basic++
+				} else {
+					large++
 					// try to find another record with the same largeprime
 					lr, ok := largeprimes[remainder]
 					if !ok {
@@ -147,14 +155,14 @@ func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 					//fmt.Printf("  largeprime %d match\n", remainder)
 					x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could remainder divide n?
 					factors = append(factors, lr.f...)
+					largeHit++
 				}
 
 				// Add equation to the matrix
 				idlist := m.AddRow(factors, eqn{x, factors})
 				if idlist == nil {
 					if m.Rows()%100 == 0 {
-						logger.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), sieve.FalsePos(), len(largeprimes))
-						sieve.ClearFalsePos()
+						logger.Printf("%d/%d basic=%d large=%d largeHit=%d falsePos=%d\n", m.Rows(), len(fb), basic, large, largeHit, falsePos)
 					}
 					continue
 				}
@@ -214,8 +222,9 @@ type task struct {
 	seed int64
 }
 type result struct {
-	id int64
-	r  []sieve.Result
+	id       int64
+	r        []sieve.Result
+	falsePos int64
 }
 
 func worker(tasks chan task, results chan result) {
@@ -259,17 +268,21 @@ func worker(tasks chan task, results chan result) {
 		// Find best point to sieve around
 		x0 := n.SqrtCeil().Sub(b).Div(a)
 
-		var rs []sieve.Result
-		for _, r := range sieve.Smooth(a, b.Lsh(1), c, fb, x0.Sub64(sieverange/2), x0.Add64(sieverange/2), rnd) {
+		// Run sieve
+		rs, falsePos := sieve.Smooth(a, b.Lsh(1), c, fb, x0.Sub64(sieverange/2), x0.Add64(sieverange/2), rnd)
+
+		// Convert results to original task.
+		var rs2 []sieve.Result
+		for _, r := range rs {
 			r.X = a.Mul(r.X).Add(b)
 			for f, k := range af {
 				for i := uint(0); i < k; i++ {
 					r.Factors = append(r.Factors, f)
 				}
 			}
-			rs = append(rs, r)
+			rs2 = append(rs2, r)
 		}
-		results <- result{id: id, r: rs}
+		results <- result{id: id, r: rs2, falsePos: falsePos}
 	}
 }
 
@@ -284,7 +297,7 @@ type eqn struct {
 // upon a factor of n, return it instead.
 func makeFactorBase(n big.Int) ([]int64, int64) {
 	// upper limit on prime factors (TODO: dependent on n) that we sieve with
-	const B = 10000
+	const B = 50000
 	fb := []int64{-1}
 	s := &big.Scratch{}
 	for i := 0; ; i++ {

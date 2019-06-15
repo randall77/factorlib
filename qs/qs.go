@@ -110,26 +110,22 @@ func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 	largeprimes := map[int64]largerecord{}
 
 	x0 := n.SqrtCeil()
+	var basic int64
+	var large int64
+	var largeHit int64
+	var falsePos int64
 	for {
 		x1 := x0.Add64(1 << 30) // TODO: paramaterize?
-		for _, r := range sieve.Smooth(big.Int64(1), big.Int64(0), n.Neg(), fb, x0, x1, rnd) {
+		rs, f := sieve.Smooth(big.Int64(1), big.Int64(0), n.Neg(), fb, x0, x1, rnd)
+		falsePos += f
+		for _, r := range rs {
 			x := r.X
 			factors := r.Factors
 			remainder := r.Remainder
-			/*
-				fmt.Printf("%d^2-%d=%d=", x, n, x.Mul(x).Sub(n))
-				for i, f := range factors {
-					if i != 0 {
-						fmt.Printf("·")
-					}
-					fmt.Printf("%d", fb[f])
-				}
-				if remainder != 1 {
-					fmt.Printf("·%d", remainder)
-				}
-				fmt.Println()
-			*/
-			if remainder != 1 {
+			if remainder == 1 {
+				basic++
+			} else {
+				large++
 				// try to find another record with the same largeprime
 				lr, ok := largeprimes[remainder]
 				if !ok {
@@ -143,14 +139,14 @@ func Factor(n big.Int, rnd *rand.Rand, logger *log.Logger) ([]big.Int, error) {
 				//fmt.Printf("  largeprime %d match\n", remainder)
 				x = x.Mul(lr.x).Mod(n).Mul(big.Int64(remainder).ModInv(n)).Mod(n) // TODO: could remainder divide n?
 				factors = append(factors, lr.f...)
+				largeHit++
 			}
 
 			// Add equation to the matrix
 			idlist := m.AddRow(factors, eqn{x, factors})
 			if idlist == nil {
 				if m.Rows()%100 == 0 {
-					logger.Printf("%d/%d falsepos=%d largeprimes=%d\n", m.Rows(), len(fb), sieve.FalsePos(), len(largeprimes))
-					sieve.ClearFalsePos()
+					logger.Printf("%d/%d basic=%d large=%d largeHit=%d falsePos=%d\n", m.Rows(), len(fb), basic, large, largeHit, falsePos)
 				}
 				continue
 			}

@@ -16,17 +16,8 @@ import (
 const windowBits = 14
 const window = 1 << windowBits
 
-// check to see if anything returned from the sieve isn't actually usable
-const checkFalsePositive = false
-
 // check to see if anything usable isn't returned by the sieve
 const checkFalseNegative = false
-
-// TODO: do this more systematically
-var falsepos int
-
-func FalsePos() int  { return falsepos }
-func ClearFalsePos() { falsepos = 0 }
 
 // Records f(x) == product(factors)*remainder
 // The values in the factors slice are indexes into the factor base
@@ -40,12 +31,13 @@ type Result struct {
 // Returns each x found, togegther with the factorization of f(x) into factor base primes and a
 // possible bigprime (< max(fb)^2) remainder.
 // Searches in the window [x0, x1).
-func Smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Result {
+// Also returns the number of false positives (for logging only)
+func Smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) ([]Result, int64) {
 	if fb[0] != -1 {
 		panic("first factor base must be -1")
 	}
 	// Compute result.
-	result := smooth(a, b, c, fb, x0, x1, rnd)
+	result, falsePos := smooth(a, b, c, fb, x0, x1, rnd)
 	// Check result.
 	for _, r := range result {
 		f := a.Mul(r.X).Add(b).Mul(r.X).Add(c)
@@ -58,12 +50,12 @@ func Smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Resul
 		}
 	}
 	// Return result.
-	return result
+	return result, falsePos
 }
 
-func smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Result {
+func smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) ([]Result, int64) {
 	if x0.Equals(x1) {
-		return nil
+		return nil, 0
 	}
 	if x0.Add64(1).Equals(x1) {
 		// Testing just x0.
@@ -71,7 +63,7 @@ func smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Resul
 		var factors []uint
 		f := a.Mul(x0).Add(b).Mul(x0).Add(c)
 		if f.IsZero() {
-			return nil
+			return nil, 0
 		}
 		for i, p := range fb {
 			if p == -1 {
@@ -88,9 +80,9 @@ func smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Resul
 		}
 		maxp := fb[len(fb)-1] // TODO: assumes last entry in factor base is the largest
 		if f.Cmp64(maxp*maxp) < 0 {
-			return []Result{Result{X: x0, Factors: factors, Remainder: f.Int64()}}
+			return []Result{Result{X: x0, Factors: factors, Remainder: f.Int64()}}, 0
 		}
-		return nil
+		return nil, 0
 	}
 
 	// Find min and max of f(x)=ax^2+bx+c over the range [x0,x1)
@@ -122,10 +114,9 @@ func smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Resul
 		// split if we change sign
 		// TODO: just binary search for the midpoint? Or is this enough?
 		xmid := x0.Add(x1).Rsh(1)
-		return append(
-			smooth(a, b, c, fb, x0, xmid, rnd),
-			smooth(a, b, c, fb, xmid, x1, rnd)...,
-		)
+		r0, f0 := smooth(a, b, c, fb, x0, xmid, rnd)
+		r1, f1 := smooth(a, b, c, fb, xmid, x1, rnd)
+		return append(r0, r1...), f0 + f1
 	}
 
 	// sieve to find any potential smooth f(x)
@@ -137,6 +128,7 @@ func smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Resul
 	s := &big.Scratch{}
 
 	// check potential results using trial factorization
+	var falsePos int64
 	for _, x := range res {
 		// compute y=f(x)
 		y := a.Mul(x).Add(b).Mul(x).Add(c)
@@ -161,14 +153,7 @@ func smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Resul
 		// if remainder > B^2, it's too big, might not be prime.
 		maxp := fb[len(fb)-1]
 		if y.Cmp64(maxp*maxp) > 0 {
-			if checkFalsePositive {
-				var f []int64
-				for _, j := range factors {
-					f = append(f, fb[j])
-				}
-				fmt.Printf("  false positive x=%d f(x)=%d f=%v·%d maxp*maxp=%d min=%d max=%d\n", x, a.Mul(x).Add(b).Mul(x).Add(c), f, y, maxp*maxp, min, max)
-			}
-			falsepos++
+			falsePos++
 			continue
 		}
 		if y.Cmp(big.Int64(y.Int64())) != 0 {
@@ -179,7 +164,7 @@ func smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Resul
 		if len(result) > 2*len(fb) {
 			// early out when we're factoring small n
 			// TODO: include in spec for Smooth function?
-			return result
+			return result, falsePos
 		}
 	}
 	if checkFalseNegative {
@@ -215,7 +200,7 @@ func smooth(a, b, c big.Int, fb []int64, x0, x1 big.Int, rnd *rand.Rand) []Resul
 			}
 		}
 	}
-	return result
+	return result, falsePos
 }
 
 // sieveEntry is the data type in which we accumulate the sum of
